@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { anonymousSignIn, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, setFirebaseVote, subscribeRoom, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
+import { anonymousSignIn, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, setFirebasePrivateRole, setFirebaseVote, subscribeFirebasePrivateRole, subscribeRoom, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
 import './style.css';
 
 const avatars = [
@@ -104,9 +104,14 @@ function App() {
       setPlayers(remotePlayers);
       setChatMessages(Object.values(remoteRoom.chatMessages || {}));
       setVoteState(Object.entries(remoteRoom.votes || {}).map(([voterId, targetId]) => ({ targetId, count: Object.values(remoteRoom.votes || {}).filter((value) => value === targetId).length, voterId })));
-      setScreen((current) => current === 'home' || current === 'welcome' ? 'room' : current);
+      setScreen((current) => current === 'home' || current === 'welcome' ? 'room' : remoteRoom.phase !== 'lobi' && current === 'room' ? 'game' : current);
     });
   }, [firebaseMode, room.code]);
+
+  useEffect(() => {
+    if (!firebaseMode || !room.code || room.isHost) return undefined;
+    return subscribeFirebasePrivateRole(room.code, playerId.current, (role) => role && setAssignedRole(role));
+  }, [firebaseMode, room.code, room.isHost]);
 
   function sendRoomAction(action) {
     if (firebaseMode && room.code) {
@@ -167,6 +172,14 @@ function App() {
   }
 
   function startRoom() {
+    if (firebaseMode) {
+      const eligiblePlayers = players.filter((player) => player.id !== playerId.current);
+      const shuffledRoles = [...roleOptions].sort(() => Math.random() - 0.5);
+      Promise.all(eligiblePlayers.map((player, index) => setFirebasePrivateRole(room.code, player.id, shuffledRoles[index % shuffledRoles.length])))
+        .then(() => updateFirebaseRoom(room.code, { phase: 'malam' }))
+        .then(() => setScreen('game'));
+      return;
+    }
     const result = sendRoomAction({ type: 'start_room', playerId: playerId.current });
     if (firebaseMode) {
       Promise.resolve(result).then(() => setScreen('game'));
