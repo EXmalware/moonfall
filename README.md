@@ -26,3 +26,7 @@ Open the generated ngrok URL in the moderator tab and in the other player tabs. 
 ```bash
 npm run build
 ```
+
+## GitHub Pages
+
+In the repository settings, open **Settings > Pages** and set **Source** to **GitHub Actions**. Do not select **Deploy from a branch** with the repository root, because the root `index.html` is the Vite source entry and references JSX. The workflow in `.github/workflows/deploy-pages.yml` builds `dist/` and deploys the compiled application.
