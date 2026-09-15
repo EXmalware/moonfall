@@ -30,3 +30,7 @@ npm run build
 ## GitHub Pages
 
 In the repository settings, open **Settings > Pages** and set **Source** to **GitHub Actions**. Do not select **Deploy from a branch** with the repository root, because the root `index.html` is the Vite source entry and references JSX. The workflow in `.github/workflows/deploy-pages.yml` builds `dist/` and deploys the compiled application.
+
+## Production multiplayer
+
+GitHub Pages hosts only the frontend. Deploy `server.js` to a WebSocket-capable Node host such as Render using `render.yaml`. Then add a GitHub repository variable named `VITE_WS_URL` with the backend URL, for example `wss://moonfall-server.onrender.com/ws`. The Pages workflow injects that variable during the Vite build. Without it, the static UI loads but room creation and multiplayer cannot connect.

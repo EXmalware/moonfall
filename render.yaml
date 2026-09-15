@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: moonfall-server
+    runtime: node
+    buildCommand: npm ci
+    startCommand: node server.js
+    plan: free

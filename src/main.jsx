@@ -50,7 +50,8 @@ function App() {
   const playerId = useRef(crypto.randomUUID());
 
   useEffect(() => {
-    const socket = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`);
+    const defaultSocketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
+    const socket = new WebSocket(import.meta.env.VITE_WS_URL || defaultSocketUrl);
     socketRef.current = socket;
     socket.addEventListener('open', () => {
       const savedSession = sessionStorage.getItem('moonfall-room-session');
@@ -86,7 +87,7 @@ function App() {
       if (message.type === 'night_action_status') setModeratorActionStatus(message);
       if (message.type === 'game_started') setScreen('game');
     });
-    socket.addEventListener('error', () => setRoomError('Koneksi room gagal. Pastikan server dijalankan dengan npm run dev.'));
+    socket.addEventListener('error', () => setRoomError('Koneksi multiplayer gagal. Backend WebSocket belum terhubung.'));
     return () => socket.close();
   }, []);
 
@@ -169,6 +170,7 @@ function App() {
           <button className="primary-button" onClick={() => setModal('create')}><span className="button-icon">+</span>Buat room<span className="arrow">↗</span></button>
           <button className="secondary-button" onClick={() => setModal('join')}><span className="button-icon">⌁</span>Gabung dengan kode<span className="arrow">↗</span></button>
         </div>
+        {roomError && <p className="connection-warning">{roomError}</p>}
         <div className="home-stats"><div><strong>6—40</strong><span>pemain</span></div><div><strong>20 mnt</strong><span>rata-rata permainan</span></div><div><strong>∞</strong><span>pengkhianatan</span></div></div>
         <div className="section-heading"><span>Cara bermain</span><span className="section-line" /></div>
         <div className="steps"><Step number="01" title="Kumpulkan" text="Buat room atau masuk ke room temanmu." /><Step number="02" title="Kelabui" text="Setiap malam, peran rahasia mulai bergerak." /><Step number="03" title="Bertahan" text="Gunakan insting. Hanya satu faksi yang menang." /></div>
