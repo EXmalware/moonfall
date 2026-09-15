@@ -15,6 +15,10 @@
             ".read": "auth != null && auth.uid === $playerId",
             ".write": "auth != null && (auth.uid === $playerId || auth.uid === data.parent().parent().child('hostId').val())"
           }
+        },
+        "werewolfChat": {
+          ".read": "auth != null",
+          ".write": "auth != null"
         }
       }
     }

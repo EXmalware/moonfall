@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { anonymousSignIn, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, setFirebasePrivateRole, setFirebaseVote, subscribeFirebasePrivateRole, subscribeRoom, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
+import { anonymousSignIn, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebasePrivateRole, setFirebaseVote, subscribeFirebasePrivateRole, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
 import './style.css';
 
 const avatars = [
@@ -113,10 +113,16 @@ function App() {
     return subscribeFirebasePrivateRole(room.code, playerId.current, (role) => role && setAssignedRole(role));
   }, [firebaseMode, room.code, room.isHost]);
 
+  useEffect(() => {
+    if (!firebaseMode || !room.code || assignedRole?.faction !== 'KELOMPOK JAHAT') return undefined;
+    return subscribeFirebaseWerewolfChat(room.code, (messages) => setRoleChatMessages(Object.values(messages || {})));
+  }, [firebaseMode, room.code, assignedRole]);
+
   function sendRoomAction(action) {
     if (firebaseMode && room.code) {
       if (action.type === 'start_room' || action.type === 'set_phase') return updateFirebaseRoom(room.code, { phase: action.type === 'start_room' ? 'malam' : action.phase });
       if (action.type === 'chat_message') return pushFirebaseChat(room.code, { id: `${Date.now()}-${Math.random()}`, alias: players.find((player) => player.id === playerId.current)?.alias || 'Warga', text: action.text });
+      if (action.type === 'role_chat') return pushFirebaseWerewolfChat(room.code, { id: `${Date.now()}-${Math.random()}`, alias: players.find((player) => player.id === playerId.current)?.alias || 'Werewolf', text: action.text });
       if (action.type === 'vote_player') return setFirebaseVote(room.code, action.playerId, action.targetId);
       return Promise.resolve();
     }
