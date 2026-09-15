@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { anonymousSignIn } from './firebase';
+import { anonymousSignIn, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, setFirebaseVote, subscribeRoom, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
 import './style.css';
 
 const avatars = [
@@ -49,9 +49,11 @@ function App() {
   const socketRef = useRef(null);
   const pendingRoomAction = useRef(null);
   const playerId = useRef(crypto.randomUUID());
+  const firebaseMode = import.meta.env.VITE_USE_FIREBASE === 'true';
 
   useEffect(() => {
     anonymousSignIn().catch(() => setRoomError('Firebase Authentication belum diaktifkan. Aktifkan Anonymous sign-in di Firebase Console.'));
+    if (firebaseMode) return undefined;
     const defaultSocketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
     const socket = new WebSocket(import.meta.env.VITE_WS_URL || defaultSocketUrl);
     socketRef.current = socket;
@@ -93,7 +95,26 @@ function App() {
     return () => socket.close();
   }, []);
 
+  useEffect(() => {
+    if (!firebaseMode || !room.code) return undefined;
+    return subscribeRoom(room.code, (remoteRoom) => {
+      if (!remoteRoom) return;
+      const remotePlayers = Object.values(remoteRoom.players || {});
+      setRoom((current) => ({ ...current, ...remoteRoom, isHost: remoteRoom.hostId === playerId.current }));
+      setPlayers(remotePlayers);
+      setChatMessages(Object.values(remoteRoom.chatMessages || {}));
+      setVoteState(Object.entries(remoteRoom.votes || {}).map(([voterId, targetId]) => ({ targetId, count: Object.values(remoteRoom.votes || {}).filter((value) => value === targetId).length, voterId })));
+      setScreen((current) => current === 'home' || current === 'welcome' ? 'room' : current);
+    });
+  }, [firebaseMode, room.code]);
+
   function sendRoomAction(action) {
+    if (firebaseMode && room.code) {
+      if (action.type === 'start_room' || action.type === 'set_phase') return updateFirebaseRoom(room.code, { phase: action.type === 'start_room' ? 'malam' : action.phase });
+      if (action.type === 'chat_message') return pushFirebaseChat(room.code, { id: `${Date.now()}-${Math.random()}`, alias: players.find((player) => player.id === playerId.current)?.alias || 'Warga', text: action.text });
+      if (action.type === 'vote_player') return setFirebaseVote(room.code, action.playerId, action.targetId);
+      return Promise.resolve();
+    }
     if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify(action));
     else pendingRoomAction.current = action;
   }
@@ -109,6 +130,13 @@ function App() {
   function createRoom(moderator, maxPlayers) {
     setAssignedRole(null);
     sessionStorage.removeItem('moonfall-room-session');
+    if (firebaseMode) {
+      const code = generateCode();
+      const player = { id: playerId.current, name: profile.username || 'Kamu', alias: 'Warga #1', icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: 'Host' };
+      createFirebaseRoom(code, { code, name: 'Desa Cahaya Bulan', moderator, moderatorId: player.id, hostId: player.id, maxPlayers, phase: 'lobi', players: { [player.id]: player } }).then(() => setRoom((current) => ({ ...current, code, maxPlayers, moderator, isHost: true })));
+      setModal(null);
+      return;
+    }
     sendRoomAction({ type: 'create_room', moderator, maxPlayers, name: 'Desa Cahaya Bulan', player: { id: playerId.current, name: profile.username || 'Kamu', icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone } });
     setModal(null);
   }
@@ -117,12 +145,32 @@ function App() {
     if (joinCode.trim().length < 4) return;
     setAssignedRole(null);
     sessionStorage.removeItem('moonfall-room-session');
+    if (firebaseMode) {
+      const code = joinCode.trim().toUpperCase();
+      const player = { id: playerId.current, name: profile.username || 'Kamu', alias: `Warga #${players.length + 1}`, icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: 'Ready' };
+      getFirebaseRoom(code).then((remoteRoom) => {
+        if (!remoteRoom) return setRoomError('Room tidak ditemukan.');
+        if (Object.keys(remoteRoom.players || {}).length >= remoteRoom.maxPlayers && !remoteRoom.players[player.id]) return setRoomError('Room sudah penuh.');
+        return upsertFirebasePlayer(code, player.id, player).then(() => {
+          setRoom((current) => ({ ...current, code, isHost: false }));
+          setModal(null);
+        });
+      });
+      return;
+    }
     sendRoomAction({ type: 'join_room', code: joinCode.trim().toUpperCase(), player: { id: playerId.current, name: profile.username || 'Kamu', icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone } });
     setModal(null);
   }
 
   function setPhase(nextPhase) {
     sendRoomAction({ type: 'set_phase', phase: nextPhase, playerId: playerId.current });
+  }
+
+  function startRoom() {
+    const result = sendRoomAction({ type: 'start_room', playerId: playerId.current });
+    if (firebaseMode) {
+      Promise.resolve(result).then(() => setScreen('game'));
+    }
   }
 
   function sendChat(text) {
@@ -153,7 +201,7 @@ function App() {
   }
 
   if (screen === 'welcome') return <Welcome profile={profile} updateProfile={updateProfile} enterGame={enterGame} />;
-  if (screen === 'room') return <Room room={room} profile={profile} players={players} copied={copied} copyCode={copyCode} back={() => setScreen('home')} start={() => sendRoomAction({ type: 'start_room', playerId: playerId.current })} setPhase={setPhase} canStart={room.isHost} roomError={roomError} />;
+  if (screen === 'room') return <Room room={room} profile={profile} players={players} copied={copied} copyCode={copyCode} back={() => setScreen('home')} start={startRoom} setPhase={setPhase} canStart={room.isHost} roomError={roomError} />;
   if (screen === 'game') return <SynchronizedGameScreen hunterPrompt={hunterPrompt} sendHunterShot={sendHunterShot} currentAlive={players.find((player) => player.id === playerId.current)?.alive !== false} assignedRole={assignedRole} isModerator={room.isHost} winner={winner} nightResult={nightResult} roleResult={roleResult} roleChatMessages={roleChatMessages} sendRoleChat={sendRoleChat} nightActionStatus={nightActionStatus} moderatorActionStatus={moderatorActionStatus} sendNightAction={sendNightAction} currentPhase={room.phase} players={players} voteState={voteState} sendVote={sendVote} chatMessages={chatMessages} sendChat={sendChat} canModerate={room.isHost} setPhase={setPhase} back={() => setScreen('room')} />;
 
   return (
