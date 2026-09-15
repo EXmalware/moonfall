@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { anonymousSignIn } from './firebase';
 import './style.css';
 
 const avatars = [
@@ -50,6 +51,7 @@ function App() {
   const playerId = useRef(crypto.randomUUID());
 
   useEffect(() => {
+    anonymousSignIn().catch(() => setRoomError('Firebase Authentication belum diaktifkan. Aktifkan Anonymous sign-in di Firebase Console.'));
     const defaultSocketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
     const socket = new WebSocket(import.meta.env.VITE_WS_URL || defaultSocketUrl);
     socketRef.current = socket;
