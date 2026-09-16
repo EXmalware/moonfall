@@ -25,6 +25,8 @@ export const updateFirebaseRoom = async (code, patch) => update(roomRef(code), p
 export const upsertFirebasePlayer = async (code, playerId, player) => set(ref(database, `rooms/${code}/players/${playerId}`), player);
 export const pushFirebaseChat = async (code, message) => push(ref(database, `rooms/${code}/chatMessages`), message);
 export const setFirebaseVote = async (code, voterId, targetId) => set(ref(database, `rooms/${code}/votes/${voterId}`), targetId);
+export const setFirebaseNightAction = async (code, playerId, action) => set(ref(database, `rooms/${code}/nightActions/${playerId}`), action);
+export const subscribeFirebaseNightActions = (code, callback) => onValue(ref(database, `rooms/${code}/nightActions`), (snapshot) => callback(snapshot.val()));
 export const pushFirebaseWerewolfChat = async (code, message) => push(ref(database, `werewolfChat/${code}`), message);
 export const subscribeFirebaseWerewolfChat = (code, callback) => onValue(ref(database, `werewolfChat/${code}`), (snapshot) => callback(snapshot.val()));
 export const setFirebasePrivateRole = async (code, playerId, role) => set(ref(database, `privateRoles/${code}/${playerId}`), role);

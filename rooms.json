@@ -136,8 +136,8 @@
     ],
     "nightResult": "Malam berlalu tanpa korban.",
     "winner": "",
-    "phaseEndsAt": 1789544530868,
-    "round": 2
+    "phaseEndsAt": 1789546024079,
+    "round": 3
   },
   {
     "code": "JIUHPP",
@@ -299,10 +299,10 @@
         }
       ]
     ],
-    "phaseEndsAt": 1789544470868,
+    "phaseEndsAt": 1789545964080,
     "nightResult": "",
     "winner": "",
-    "round": 2
+    "round": 3
   },
   {
     "code": "830KS9",
@@ -312,7 +312,7 @@
     "hostId": "host-x",
     "maxPlayers": 6,
     "phase": "malam",
-    "round": 3,
+    "round": 4,
     "chatMessages": [],
     "votes": [],
     "nightActions": [],
@@ -428,7 +428,7 @@
         }
       ]
     ],
-    "phaseEndsAt": 1789544470868,
+    "phaseEndsAt": 1789545964080,
     "nightResult": "",
     "winner": ""
   },
@@ -440,7 +440,7 @@
     "hostId": "host-y",
     "maxPlayers": 6,
     "phase": "malam",
-    "round": 3,
+    "round": 4,
     "chatMessages": [],
     "votes": [],
     "nightActions": [],
@@ -556,7 +556,7 @@
         }
       ]
     ],
-    "phaseEndsAt": 1789544470868,
+    "phaseEndsAt": 1789545964080,
     "nightResult": "",
     "winner": ""
   },
@@ -568,7 +568,7 @@
     "hostId": "smoke-host",
     "maxPlayers": 6,
     "phase": "malam",
-    "round": 3,
+    "round": 4,
     "chatMessages": [],
     "votes": [],
     "nightActions": [],
@@ -632,7 +632,7 @@
         "socket": null
       }
     ],
-    "phaseEndsAt": 1789544470868,
+    "phaseEndsAt": 1789545964080,
     "roles": [
       [
         "smoke-player-1",
@@ -696,7 +696,7 @@
     "hostId": "smoke-host",
     "maxPlayers": 6,
     "phase": "malam",
-    "round": 3,
+    "round": 4,
     "chatMessages": [],
     "votes": [],
     "nightActions": [],
@@ -760,7 +760,7 @@
         "socket": null
       }
     ],
-    "phaseEndsAt": 1789544470868,
+    "phaseEndsAt": 1789545964080,
     "roles": [
       [
         "smoke-player-1",
@@ -824,7 +824,7 @@
     "hostId": "smoke-host",
     "maxPlayers": 6,
     "phase": "siang",
-    "round": 2,
+    "round": 3,
     "chatMessages": [],
     "votes": [],
     "nightActions": [],
@@ -888,7 +888,7 @@
         "socket": null
       }
     ],
-    "phaseEndsAt": 1789544530868,
+    "phaseEndsAt": 1789546024080,
     "roles": [
       [
         "smoke-player-1",
@@ -952,7 +952,7 @@
     "hostId": "smoke-host",
     "maxPlayers": 6,
     "phase": "malam",
-    "round": 2,
+    "round": 3,
     "chatMessages": [],
     "votes": [],
     "nightActions": [],
@@ -1016,7 +1016,7 @@
         "socket": null
       }
     ],
-    "phaseEndsAt": 1789544470868,
+    "phaseEndsAt": 1789545964080,
     "roles": [
       [
         "smoke-host",
@@ -1080,7 +1080,7 @@
     "hostId": "smoke-host",
     "maxPlayers": 6,
     "phase": "malam",
-    "round": 2,
+    "round": 3,
     "chatMessages": [],
     "votes": [],
     "nightActions": [],
@@ -1144,7 +1144,7 @@
         "socket": null
       }
     ],
-    "phaseEndsAt": 1789544470868,
+    "phaseEndsAt": 1789545964080,
     "roles": [
       [
         "smoke-host",
@@ -1208,7 +1208,7 @@
     "hostId": "smoke-host",
     "maxPlayers": 6,
     "phase": "siang",
-    "round": 1,
+    "round": 2,
     "chatMessages": [],
     "votes": [],
     "nightActions": [],
@@ -1272,7 +1272,7 @@
         "socket": null
       }
     ],
-    "phaseEndsAt": 1789544530868,
+    "phaseEndsAt": 1789546024080,
     "roles": [
       [
         "smoke-host",
@@ -1336,7 +1336,7 @@
     "hostId": "smoke-host",
     "maxPlayers": 6,
     "phase": "siang",
-    "round": 1,
+    "round": 2,
     "chatMessages": [],
     "votes": [],
     "nightActions": [],
@@ -1400,7 +1400,7 @@
         "socket": null
       }
     ],
-    "phaseEndsAt": 1789544533666,
+    "phaseEndsAt": 1789546024080,
     "roles": [
       [
         "smoke-host",
@@ -1450,6 +1450,262 @@
           "faction": "KELOMPOK BAIK",
           "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
           "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ]
+    ],
+    "nightResult": "Malam berlalu tanpa korban.",
+    "winner": ""
+  },
+  {
+    "code": "FS6K1M",
+    "name": "Desa Cahaya Bulan",
+    "moderator": "player",
+    "moderatorId": "smoke-player-1",
+    "hostId": "smoke-host",
+    "maxPlayers": 6,
+    "phase": "malam",
+    "round": 2,
+    "chatMessages": [],
+    "votes": [],
+    "nightActions": [],
+    "previousBodyguardTarget": null,
+    "witchPotions": [],
+    "pendingHunter": null,
+    "cupidPair": null,
+    "players": [
+      {
+        "id": "smoke-host",
+        "name": "Host",
+        "alias": "Warga #1",
+        "alive": true,
+        "status": "Host",
+        "sessionToken": "4a485fab-612d-426a-8786-aadfebaa1cb9",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-1",
+        "name": "P1",
+        "alias": "Warga #2",
+        "alive": true,
+        "status": "Moderator",
+        "sessionToken": "eec1a06f-c8d4-43ce-b7e4-3532d9cae1a1",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-2",
+        "name": "P2",
+        "alias": "Warga #3",
+        "alive": true,
+        "status": "Ready",
+        "sessionToken": "be21aab1-c006-4aac-97b3-e56e2cbb5ec6",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-3",
+        "name": "P3",
+        "alias": "Warga #4",
+        "alive": true,
+        "status": "Ready",
+        "sessionToken": "f2d9a474-00ef-4517-ac37-626f89bdbb39",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-4",
+        "name": "P4",
+        "alias": "Warga #5",
+        "alive": true,
+        "status": "Ready",
+        "sessionToken": "372cfb2e-72a1-42ac-a95d-1fa7bda6bcae",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-5",
+        "name": "P5",
+        "alias": "Warga #6",
+        "alive": true,
+        "status": "Ready",
+        "sessionToken": "b3f7dc43-eeb4-4350-a934-18f9f66977cc",
+        "socket": null
+      }
+    ],
+    "phaseEndsAt": 1789545967095,
+    "roles": [
+      [
+        "smoke-host",
+        {
+          "name": "Werewolf",
+          "symbol": "☾",
+          "faction": "KELOMPOK JAHAT",
+          "description": "Bangun setiap malam bersama kelompokmu dan pilih satu warga untuk dimangsa.",
+          "action": "Pilih target serangan bersama kelompokmu."
+        }
+      ],
+      [
+        "smoke-player-2",
+        {
+          "name": "Pelihat / Seer",
+          "symbol": "◉",
+          "faction": "KELOMPOK BAIK",
+          "description": "Setiap malam, cek apakah satu pemain adalah Werewolf atau bukan.",
+          "action": "Terawang satu pemain malam ini."
+        }
+      ],
+      [
+        "smoke-player-3",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "smoke-player-4",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "smoke-player-5",
+        {
+          "name": "Pelindung / Bodyguard",
+          "symbol": "✚",
+          "faction": "KELOMPOK BAIK",
+          "description": "Melindungi satu pemain dari serangan Werewolf dan tidak boleh memilih orang yang sama dua malam berturut-turut.",
+          "action": "Lindungi satu pemain malam ini."
+        }
+      ]
+    ],
+    "nightResult": "",
+    "winner": ""
+  },
+  {
+    "code": "AFQVV4",
+    "name": "Desa Cahaya Bulan",
+    "moderator": "player",
+    "moderatorId": "smoke-player-1",
+    "hostId": "smoke-host",
+    "maxPlayers": 6,
+    "phase": "siang",
+    "round": 1,
+    "chatMessages": [],
+    "votes": [],
+    "nightActions": [],
+    "previousBodyguardTarget": null,
+    "witchPotions": [],
+    "pendingHunter": null,
+    "cupidPair": null,
+    "players": [
+      {
+        "id": "smoke-host",
+        "name": "Host",
+        "alias": "Warga #1",
+        "alive": true,
+        "status": "Host",
+        "sessionToken": "ee133c8b-13f3-4bb6-9876-6fd018293aca",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-1",
+        "name": "P1",
+        "alias": "Warga #2",
+        "alive": true,
+        "status": "Moderator",
+        "sessionToken": "2df16bfb-ef3a-4e56-bb2f-d0a479538330",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-2",
+        "name": "P2",
+        "alias": "Warga #3",
+        "alive": true,
+        "status": "Ready",
+        "sessionToken": "dd319e82-54ba-4cb3-99f6-6951a30ca9f9",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-3",
+        "name": "P3",
+        "alias": "Warga #4",
+        "alive": true,
+        "status": "Ready",
+        "sessionToken": "2f32e40f-6f91-443a-a388-9184e93da874",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-4",
+        "name": "P4",
+        "alias": "Warga #5",
+        "alive": true,
+        "status": "Ready",
+        "sessionToken": "7120cd64-424b-43f7-ab5c-3a909629ac2b",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-5",
+        "name": "P5",
+        "alias": "Warga #6",
+        "alive": true,
+        "status": "Ready",
+        "sessionToken": "e1e14229-4f5f-4fcb-972f-659816be88c6",
+        "socket": null
+      }
+    ],
+    "phaseEndsAt": 1789546027159,
+    "roles": [
+      [
+        "smoke-host",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "smoke-player-2",
+        {
+          "name": "Pelindung / Bodyguard",
+          "symbol": "✚",
+          "faction": "KELOMPOK BAIK",
+          "description": "Melindungi satu pemain dari serangan Werewolf dan tidak boleh memilih orang yang sama dua malam berturut-turut.",
+          "action": "Lindungi satu pemain malam ini."
+        }
+      ],
+      [
+        "smoke-player-3",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "smoke-player-4",
+        {
+          "name": "Pelihat / Seer",
+          "symbol": "◉",
+          "faction": "KELOMPOK BAIK",
+          "description": "Setiap malam, cek apakah satu pemain adalah Werewolf atau bukan.",
+          "action": "Terawang satu pemain malam ini."
+        }
+      ],
+      [
+        "smoke-player-5",
+        {
+          "name": "Werewolf",
+          "symbol": "☾",
+          "faction": "KELOMPOK JAHAT",
+          "description": "Bangun setiap malam bersama kelompokmu dan pilih satu warga untuk dimangsa.",
+          "action": "Pilih target serangan bersama kelompokmu."
         }
       ]
     ],

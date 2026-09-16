@@ -186,6 +186,13 @@ function createCode() {
   return code;
 }
 
+function nextPlayerAlias(room) {
+  const aliases = new Set([...room.players.values()].map((player) => player.alias));
+  let number = 1;
+  while (aliases.has(`Warga #${number}`)) number += 1;
+  return `Warga #${number}`;
+}
+
 function send(socket, payload) {
   if (socket?.readyState === 1) socket.send(JSON.stringify(payload));
 }
@@ -373,7 +380,7 @@ websocketServer.on('connection', (socket) => {
       if (!message.player?.id || room.players.has(message.player.id)) return send(socket, { type: 'room_error', message: 'ID pemain sudah digunakan atau tidak valid.' });
       const isModerator = room.moderator === 'player' && !room.moderatorId;
       if (isModerator) room.moderatorId = message.player.id;
-      const player = { ...message.player, alias: `Warga #${room.players.size + 1}`, alive: true, status: isModerator ? 'Moderator' : 'Ready', sessionToken: randomUUID(), socket };
+      const player = { ...message.player, alias: nextPlayerAlias(room), alive: true, status: isModerator ? 'Moderator' : 'Ready', sessionToken: randomUUID(), socket };
       room.players.set(message.player.id, player);
       console.log(`${message.player.name} bergabung ke room ${code} (${room.players.size}/${room.maxPlayers})`);
       socket.roomCode = code;

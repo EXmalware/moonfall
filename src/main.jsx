@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { anonymousSignIn, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebasePrivateRole, setFirebaseVote, subscribeFirebasePrivateRole, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
+import { anonymousSignIn, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebaseNightAction, setFirebasePrivateRole, setFirebaseVote, subscribeFirebasePrivateRole, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
 import './style.css';
 
 const avatars = [
@@ -152,6 +152,10 @@ function App() {
       if (action.type === 'chat_message') return pushFirebaseChat(room.code, { id: `${Date.now()}-${Math.random()}`, alias: players.find((player) => player.id === playerId.current)?.alias || 'Warga', text: action.text });
       if (action.type === 'role_chat') return pushFirebaseWerewolfChat(room.code, { id: `${Date.now()}-${Math.random()}`, alias: players.find((player) => player.id === playerId.current)?.alias || 'Werewolf', text: action.text });
       if (action.type === 'vote_player') return setFirebaseVote(room.code, action.playerId, action.targetId);
+      if (action.type === 'night_action') {
+        setNightActionStatus('Aksi malammu sudah dicatat.');
+        return setFirebaseNightAction(room.code, playerId.current, { action: action.action, targetId: action.targetId || null, round: room.round || 1 });
+      }
       return Promise.resolve();
     }
     if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify(action));
@@ -186,10 +190,13 @@ function App() {
     sessionStorage.removeItem('moonfall-room-session');
     if (firebaseMode) {
       const code = joinCode.trim().toUpperCase();
-      const player = { id: playerId.current, name: profile.username || 'Kamu', alias: `Warga #${players.length + 1}`, icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: 'Ready' };
       getFirebaseRoom(code).then((remoteRoom) => {
         if (!remoteRoom) return setRoomError('Room tidak ditemukan.');
-        if (Object.keys(remoteRoom.players || {}).length >= remoteRoom.maxPlayers && !remoteRoom.players[player.id]) return setRoomError('Room sudah penuh.');
+        if (Object.keys(remoteRoom.players || {}).length >= remoteRoom.maxPlayers && !remoteRoom.players[playerId.current]) return setRoomError('Room sudah penuh.');
+        const usedAliases = new Set(Object.values(remoteRoom.players || {}).map((remotePlayer) => remotePlayer.alias));
+        let aliasNumber = 1;
+        while (usedAliases.has(`Warga #${aliasNumber}`)) aliasNumber += 1;
+        const player = { id: playerId.current, name: profile.username || 'Kamu', alias: `Warga #${aliasNumber}`, icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: 'Ready' };
         return upsertFirebasePlayer(code, player.id, player).then(() => {
           setRoom((current) => ({ ...current, code, isHost: false }));
           setModal(null);
@@ -353,7 +360,7 @@ function NightActionPanel({ players, role, status, sendAction }) {
   const isWitch = role.name.includes('Witch');
   const isCupid = role.name === 'Cupid';
   function selectCupidTarget(id) { setSelectedTargets((current) => current.includes(id) ? current.filter((targetId) => targetId !== id) : current.length < 2 ? [...current, id] : current); }
-  return <div className="night-action-panel"><div className="chat-heading"><span>Aksi malam: {role.name}</span><small>Rahasia</small></div><p>{role.action}</p>{isCupid && <><div className="night-targets">{players.filter((player) => player.status !== 'Host').map((player) => <button className={selectedTargets.includes(player.id) ? 'target-selected' : ''} key={player.id} onClick={() => selectCupidTarget(player.id)}><span>{player.alias}</span><span>{selectedTargets.includes(player.id) ? '✓' : '+'}</span></button>)}</div><button className="action-confirm-button" disabled={selectedTargets.length !== 2} onClick={() => sendAction('Cupid:pair', selectedTargets.join(','))}>Pasangkan dua pemain</button></>}{!isCupid && needsTarget && <div className="night-targets">{players.filter((player) => player.status !== 'Host').map((player) => <button className={selectedTarget === player.id ? 'target-selected' : ''} key={player.id} onClick={() => isWitch ? setSelectedTarget(player.id) : sendAction(role.name, player.id)}><span>{isWitch ? `Pilih ${player.alias}` : player.alias}</span><span>{selectedTarget === player.id ? '✓' : '↗'}</span></button>)}</div>}{isWitch && <><button className="action-confirm-button" disabled={!selectedTarget} onClick={() => sendAction('Witch:poison', selectedTarget)}>Gunakan ramuan racun</button><button className="action-confirm-button" disabled={!selectedTarget} onClick={() => sendAction('Witch:heal', selectedTarget)}>Gunakan ramuan penyembuh</button></>}{!needsTarget && !isCupid && <button className="action-confirm-button" onClick={() => sendAction(role.name, null)}>Konfirmasi aksi pasif</button>}{status && <div className="action-success">✓ {status}</div>}</div>;
+  return <div className="night-action-panel"><div className="chat-heading"><span>Aksi malam: {role.name}</span><small>Rahasia</small></div><p>{role.action}</p>{isCupid && <><div className="night-targets">{players.filter((player) => player.status !== 'Host' && player.status !== 'Moderator').map((player) => <button className={selectedTargets.includes(player.id) ? 'target-selected' : ''} key={player.id} onClick={() => selectCupidTarget(player.id)}><span>{player.alias}</span><span>{selectedTargets.includes(player.id) ? '✓' : '+'}</span></button>)}</div><button className="action-confirm-button" disabled={selectedTargets.length !== 2} onClick={() => sendAction('Cupid:pair', selectedTargets.join(','))}>Pasangkan dua pemain</button></>}{!isCupid && needsTarget && <div className="night-targets">{players.filter((player) => player.status !== 'Host' && player.status !== 'Moderator').map((player) => <button className={selectedTarget === player.id ? 'target-selected' : ''} key={player.id} onClick={() => isWitch ? setSelectedTarget(player.id) : sendAction(role.name, player.id)}><span>{isWitch ? `Pilih ${player.alias}` : player.alias}</span><span>{selectedTarget === player.id ? '✓' : '↗'}</span></button>)}</div>}{isWitch && <><button className="action-confirm-button" disabled={!selectedTarget} onClick={() => sendAction('Witch:poison', selectedTarget)}>Gunakan ramuan racun</button><button className="action-confirm-button" disabled={!selectedTarget} onClick={() => sendAction('Witch:heal', selectedTarget)}>Gunakan ramuan penyembuh</button></>}{!needsTarget && !isCupid && <button className="action-confirm-button" onClick={() => sendAction(role.name, null)}>Konfirmasi aksi pasif</button>}{status && <div className="action-success">✓ {status}</div>}</div>;
 }
 
 function HunterPanel({ players, message, sendShot }) {
