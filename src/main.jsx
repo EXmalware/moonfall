@@ -133,9 +133,13 @@ function App() {
       setPlayers(remotePlayers);
       setChatMessages(Object.values(remoteRoom.chatMessages || {}));
       setVoteState(Object.entries(remoteRoom.votes || {}).map(([voterId, targetId]) => ({ targetId, count: Object.values(remoteRoom.votes || {}).filter((value) => value === targetId).length, voterId })));
-      setScreen((current) => current === 'home' || current === 'welcome' ? 'room' : remoteRoom.phase !== 'lobi' && current === 'room' ? 'game' : current);
+      setScreen((current) => current === 'home' || current === 'welcome' ? 'room' : remoteRoom.phase !== 'lobi' ? 'game' : current);
     });
   }, [firebaseMode, room.code]);
+
+  useEffect(() => {
+    if (firebaseMode && room.code && room.phase !== 'lobi' && screen === 'room') setScreen('game');
+  }, [firebaseMode, room.code, room.phase, screen]);
 
   useEffect(() => {
     if (!firebaseMode || !room.code || room.isHost) return undefined;
@@ -240,8 +244,9 @@ function App() {
       }
       const assignedRoles = getFirebaseRoles(eligiblePlayers.length);
       Promise.all(eligiblePlayers.map((player, index) => setFirebasePrivateRole(room.code, player.id, assignedRoles[index])))
-        .then(() => updateFirebaseRoom(room.code, { phase: 'malam' }))
-        .then(() => setScreen('game'));
+        .then(() => updateFirebaseRoom(room.code, { phase: 'malam', round: 1 }))
+        .then(() => setScreen('game'))
+        .catch(() => setRoomError('Game gagal dimulai. Periksa Firebase Rules untuk role dan phase.'));
       return;
     }
     const result = sendRoomAction({ type: 'start_room', playerId: playerId.current });
