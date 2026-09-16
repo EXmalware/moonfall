@@ -276,7 +276,7 @@ websocketServer.on('connection', (socket) => {
     if (message.type === 'vote_player') {
       const room = rooms.get(socket.roomCode);
       if (!room || room.phase !== 'siang' || room.winner) return send(socket, { type: 'room_error', message: 'Voting hanya tersedia saat siang.' });
-      if (!room.players.has(socket.playerId) || !room.roles.has(message.targetId) || room.players.get(socket.playerId).alive === false || room.players.get(message.targetId).alive === false) return;
+      if (socket.playerId === room.moderatorId || !room.players.has(socket.playerId) || !room.roles.has(message.targetId) || room.players.get(socket.playerId).alive === false || room.players.get(message.targetId).alive === false) return;
       for (const voterIds of room.votes.values()) voterIds.delete(socket.playerId);
       if (!room.votes.has(message.targetId)) room.votes.set(message.targetId, new Set());
       room.votes.get(message.targetId).add(socket.playerId);

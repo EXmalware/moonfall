@@ -332,7 +332,7 @@ function DiscussionChat({ messages, sendChat }) {
 }
 
 function VotingPanel({ players, voteState, sendVote }) {
-  return <div className="voting-panel"><div className="chat-heading"><span>Voting anonim</span><small>Pilih satu tersangka</small></div><div className="vote-list">{players.filter((player) => player.alive !== false && player.status !== 'Host').map((player) => { const vote = voteState.find((item) => item.targetId === player.id); return <button className="vote-row" key={player.id} onClick={() => sendVote(player.id)}><span>{player.alias}</span><strong>{vote?.count || 0}</strong></button>; })}</div><p className="vote-note">Pilihanmu dapat diubah sebelum moderator menutup voting.</p></div>;
+  return <div className="voting-panel"><div className="chat-heading"><span>Voting anonim</span><small>Pilih satu tersangka</small></div><div className="vote-list">{players.filter((player) => player.alive !== false && player.status !== 'Host' && player.status !== 'Moderator').map((player) => { const vote = voteState.find((item) => item.targetId === player.id); return <button className="vote-row" key={player.id} onClick={() => sendVote(player.id)}><span>{player.alias}</span><strong>{vote?.count || 0}</strong></button>; })}</div><p className="vote-note">Pilihanmu dapat diubah sebelum moderator menutup voting.</p></div>;
 }
 
 function RoleChat({ messages, sendMessage }) {

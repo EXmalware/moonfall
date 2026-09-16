@@ -12,8 +12,8 @@
         },
         "votes": {
           "$voterId": {
-            ".write": "auth != null && auth.uid == $voterId",
-            ".validate": "newData.isString() && root.child('rooms').child($roomId).child('players').child(newData.val()).child('alive').val() == true"
+            ".write": "auth != null && auth.uid == $voterId && root.child('rooms').child($roomId).child('phase').val() == 'siang' && root.child('rooms').child($roomId).child('players').child(auth.uid).child('alive').val() == true && root.child('rooms').child($roomId).child('players').child(auth.uid).child('status').val() != 'Moderator'",
+            ".validate": "newData.isString() && root.child('rooms').child($roomId).child('players').child(newData.val()).child('alive').val() == true && root.child('rooms').child($roomId).child('players').child(newData.val()).child('status').val() != 'Moderator'"
           }
         },
         "chatMessages": {
