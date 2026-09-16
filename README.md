@@ -33,4 +33,6 @@ In the repository settings, open **Settings > Pages** and set **Source** to **Gi
 
 ## Production multiplayer
 
-GitHub Pages hosts only the frontend. Deploy `server.js` to a WebSocket-capable Node host such as Render using `render.yaml`. Then add a GitHub repository variable named `VITE_WS_URL` with the backend URL, for example `wss://moonfall-server.onrender.com/ws`. The Pages workflow injects that variable during the Vite build. Without it, the static UI loads but room creation and multiplayer cannot connect.
+GitHub Pages hosts only the frontend. The current Pages workflow builds with `VITE_USE_FIREBASE=true`, so the public site uses Firebase Realtime Database for its lobby path. Publish the rules from `database.rules.json` in Firebase Console and enable Anonymous Authentication before testing the public site.
+
+For the complete server-authoritative WebSocket path, deploy `server.js` to a WebSocket-capable Node host such as Render using `render.yaml`. Set `VITE_USE_FIREBASE=false` and add a GitHub repository variable named `VITE_WS_URL` with the backend URL, for example `wss://moonfall-server.onrender.com/ws`, then rebuild Pages. `VITE_WS_URL` is ignored while Firebase mode is enabled.

@@ -87,7 +87,7 @@ function App() {
       const savedSession = sessionStorage.getItem('moonfall-room-session');
       if (savedSession) {
         const session = JSON.parse(savedSession);
-        socket.send(JSON.stringify({ type: 'reconnect_room', code: session.code, playerId: session.playerId }));
+        socket.send(JSON.stringify({ type: 'reconnect_room', code: session.code, playerId: session.playerId, sessionToken: session.sessionToken }));
       } else if (pendingRoomAction.current) {
         socket.send(JSON.stringify(pendingRoomAction.current));
         pendingRoomAction.current = null;
@@ -105,9 +105,11 @@ function App() {
         setNightResult(message.room.nightResult || '');
         setWinner(message.room.winner || '');
         setRoomError('');
-        sessionStorage.setItem('moonfall-room-session', JSON.stringify({ code: message.room.code, playerId: playerId.current }));
+        const savedSession = JSON.parse(sessionStorage.getItem('moonfall-room-session') || '{}');
+        sessionStorage.setItem('moonfall-room-session', JSON.stringify({ ...savedSession, code: message.room.code, playerId: playerId.current }));
         setScreen((current) => current === 'home' || current === 'welcome' ? 'room' : current);
       }
+      if (message.type === 'session') sessionStorage.setItem('moonfall-room-session', JSON.stringify({ code: message.code, playerId: message.playerId, sessionToken: message.sessionToken }));
       if (message.type === 'room_error') setRoomError(message.message);
       if (message.type === 'role_assigned') setAssignedRole(message.role);
       if (message.type === 'role_chat') setRoleChatMessages((current) => [...current, message.message].slice(-100));
