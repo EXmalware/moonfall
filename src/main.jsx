@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { anonymousSignIn, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebaseNightAction, setFirebasePrivateRole, setFirebaseVote, subscribeFirebaseNightActions, subscribeFirebasePrivateRole, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
+import { anonymousSignIn, clearFirebaseNightActions, clearFirebaseVotes, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebaseNightAction, setFirebasePrivateRole, setFirebaseRoleResult, setFirebaseVote, subscribeFirebaseNightActions, subscribeFirebasePrivateRole, subscribeFirebasePrivateRoles, subscribeFirebaseRoleResult, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebasePlayer, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
 import './style.css';
 
 const avatars = [
@@ -71,6 +71,8 @@ function App() {
   const [hunterPrompt, setHunterPrompt] = useState('');
   const [nightResult, setNightResult] = useState('');
   const [winner, setWinner] = useState('');
+    const [firebaseRoles, setFirebaseRoles] = useState({});
+    const previousFirebasePhase = useRef('lobi');
   const socketRef = useRef(null);
   const pendingRoomAction = useRef(null);
   const playerId = useRef(crypto.randomUUID());
@@ -133,9 +135,13 @@ function App() {
       setPlayers(remotePlayers);
       setChatMessages(Object.values(remoteRoom.chatMessages || {}));
       setVoteState(Object.entries(remoteRoom.votes || {}).map(([voterId, targetId]) => ({ targetId, count: Object.values(remoteRoom.votes || {}).filter((value) => value === targetId).length, voterId })));
+      setNightResult(remoteRoom.nightResult || '');
+      setWinner(remoteRoom.winner || '');
+      if (remoteRoom.phase !== previousFirebasePhase.current && room.isHost) resolveFirebaseTransition(remoteRoom, previousFirebasePhase.current);
+      previousFirebasePhase.current = remoteRoom.phase;
       setScreen((current) => current === 'home' || current === 'welcome' ? 'room' : remoteRoom.phase !== 'lobi' ? 'game' : current);
     });
-  }, [firebaseMode, room.code]);
+  }, [firebaseMode, room.code, room.isHost]);
 
   useEffect(() => {
     if (firebaseMode && room.code && room.phase !== 'lobi' && screen === 'room') setScreen('game');
@@ -150,6 +156,68 @@ function App() {
     if (!firebaseMode || !room.code || assignedRole?.faction !== 'KELOMPOK JAHAT') return undefined;
     return subscribeFirebaseWerewolfChat(room.code, (messages) => setRoleChatMessages(Object.values(messages || {})));
   }, [firebaseMode, room.code, assignedRole]);
+
+  useEffect(() => {
+    if (!firebaseMode || !room.code || !room.isHost) return undefined;
+    return subscribeFirebasePrivateRoles(room.code, setFirebaseRoles);
+  }, [firebaseMode, room.code, room.isHost]);
+
+  useEffect(() => {
+    if (!firebaseMode || !room.code) return undefined;
+    return subscribeFirebaseRoleResult(room.code, playerId.current, (result) => result && setRoleResult(result));
+  }, [firebaseMode, room.code]);
+
+  async function resolveFirebaseTransition(remoteRoom, previousPhase) {
+    if (!room.isHost) return;
+    const remotePlayers = remoteRoom.players || {};
+    const roles = firebaseRoles || {};
+    if (previousPhase === 'siang' && remoteRoom.phase === 'malam') {
+      const totals = {};
+      for (const [voterId, targetId] of Object.entries(remoteRoom.votes || {})) {
+        const weight = roles[voterId]?.name === 'Mayor / Wali Kota' ? 2 : 1;
+        totals[targetId] = (totals[targetId] || 0) + weight;
+      }
+      const highest = Math.max(0, ...Object.values(totals));
+      const targets = Object.keys(totals).filter((id) => totals[id] === highest);
+      if (highest && targets.length === 1) {
+        const targetId = targets[0];
+        await updateFirebasePlayer(room.code, targetId, { alive: false });
+        await updateFirebaseRoom(room.code, { nightResult: `${remotePlayers[targetId]?.alias || 'Pemain'} tereliminasi melalui voting siang.` });
+        if (roles[targetId]?.name.includes('Tanner')) await updateFirebaseRoom(room.code, { winner: 'TANNER' });
+      } else {
+        await updateFirebaseRoom(room.code, { nightResult: 'Voting berakhir seri. Tidak ada pemain yang tereliminasi.' });
+      }
+      await clearFirebaseVotes(room.code);
+    }
+    if (previousPhase === 'malam' && remoteRoom.phase === 'siang') {
+      const actions = remoteRoom.nightActions || {};
+      for (const [playerId, action] of Object.entries(actions)) {
+        const roleName = firebaseRoles[playerId]?.name || '';
+        const targetRole = firebaseRoles[action.targetId];
+        if (roleName.includes('Seer') || roleName.includes('Pelihat')) await setFirebaseRoleResult(room.code, playerId, `${remotePlayers[action.targetId]?.alias || 'Pemain'} adalah ${targetRole?.faction === 'KELOMPOK JAHAT' ? 'Werewolf' : 'Bukan Werewolf'}.`);
+        if (roleName.includes('Sorceress')) await setFirebaseRoleResult(room.code, playerId, `${remotePlayers[action.targetId]?.alias || 'Pemain'} ${targetRole?.name?.includes('Seer') ? 'adalah Seer.' : 'bukan Seer.'}`);
+      }
+      const protectedIds = new Set(Object.entries(actions).filter(([id, action]) => ['Pelindung / Bodyguard', 'Dokter / Doctor'].includes(roles[id]?.name) || action.action === 'Witch:heal').map(([, action]) => action.targetId));
+      const attacks = Object.entries(actions).filter(([id]) => ['Werewolf', 'Alpha Werewolf'].includes(roles[id]?.name));
+      const attackCounts = {};
+      attacks.forEach(([, action]) => { if (action.targetId) attackCounts[action.targetId] = (attackCounts[action.targetId] || 0) + 1; });
+      const highest = Math.max(0, ...Object.values(attackCounts));
+      const targets = Object.keys(attackCounts).filter((id) => attackCounts[id] === highest);
+      const attackId = targets[0];
+      const deaths = new Set();
+      const poison = Object.values(actions).find((action) => action.action === 'Witch:poison');
+      if (poison?.targetId) deaths.add(poison.targetId);
+      if (attackId && !protectedIds.has(attackId)) deaths.add(attackId);
+      for (const targetId of deaths) if (remotePlayers[targetId]?.alive !== false) await updateFirebasePlayer(room.code, targetId, { alive: false });
+      await updateFirebaseRoom(room.code, { nightResult: deaths.size ? `${deaths.size} pemain tereliminasi pada malam hari.` : 'Malam berlalu tanpa korban.' });
+      await clearFirebaseNightActions(room.code);
+    }
+    const alive = Object.keys(remotePlayers).filter((id) => remotePlayers[id].alive !== false && id !== remoteRoom.moderatorId);
+    const evil = alive.filter((id) => ['Werewolf', 'Alpha Werewolf'].includes(roles[id]?.name));
+    const good = alive.filter((id) => roles[id]?.faction === 'KELOMPOK BAIK');
+    if (evil.length === 0) await updateFirebaseRoom(room.code, { winner: 'WARGA' });
+    else if (evil.length >= good.length) await updateFirebaseRoom(room.code, { winner: 'WEREWOLF' });
+  }
 
   useEffect(() => {
     if (!firebaseMode || !room.code) return undefined;

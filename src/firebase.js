@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { get, getDatabase, onValue, push, ref, set, update } from 'firebase/database';
+import { get, getDatabase, onValue, push, ref, remove, set, update } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyB79Gg0X8cFslo5iPtA9xmoF_3XZPFuiyM',
@@ -31,3 +31,9 @@ export const pushFirebaseWerewolfChat = async (code, message) => push(ref(databa
 export const subscribeFirebaseWerewolfChat = (code, callback) => onValue(ref(database, `werewolfChat/${code}`), (snapshot) => callback(snapshot.val()));
 export const setFirebasePrivateRole = async (code, playerId, role) => set(ref(database, `privateRoles/${code}/${playerId}`), role);
 export const subscribeFirebasePrivateRole = (code, playerId, callback) => onValue(ref(database, `privateRoles/${code}/${playerId}`), (snapshot) => callback(snapshot.val()));
+export const subscribeFirebasePrivateRoles = (code, callback) => onValue(ref(database, `privateRoles/${code}`), (snapshot) => callback(snapshot.val() || {}));
+export const updateFirebasePlayer = async (code, playerId, patch) => update(ref(database, `rooms/${code}/players/${playerId}`), patch);
+export const clearFirebaseVotes = async (code) => remove(ref(database, `rooms/${code}/votes`));
+export const clearFirebaseNightActions = async (code) => remove(ref(database, `rooms/${code}/nightActions`));
+export const setFirebaseRoleResult = async (code, playerId, result) => set(ref(database, `roleResults/${code}/${playerId}`), result);
+export const subscribeFirebaseRoleResult = (code, playerId, callback) => onValue(ref(database, `roleResults/${code}/${playerId}`), (snapshot) => callback(snapshot.val()));
