@@ -22,7 +22,7 @@
         },
         "players": {
           "$playerId": {
-            ".write": "auth != null && (auth.uid == $playerId || auth.uid == root.child('rooms').child($roomId).child('hostId').val() || auth.uid == root.child('rooms').child($roomId).child('moderatorId')) && (!data.exists() || newData.child('id').val() == data.child('id').val())",
+            ".write": "auth != null && (auth.uid == $playerId || auth.uid == root.child('rooms').child($roomId).child('hostId').val() || auth.uid == root.child('rooms').child($roomId).child('moderatorId').val()) && (!data.exists() || newData.child('id').val() == data.child('id').val())",
             ".validate": "newData.hasChildren(['id', 'alias', 'alive']) && newData.child('id').val() == $playerId"
           }
         },
@@ -50,7 +50,7 @@
       "$roomId": {
         ".read": "auth != null && (auth.uid == root.child('rooms').child($roomId).child('hostId').val() || auth.uid == root.child('rooms').child($roomId).child('moderatorId').val())",
         "$playerId": {
-          ".read": "auth != null && (auth.uid == $playerId || auth.uid == root.child('rooms').child($roomId).child('hostId').val() || auth.uid == root.child('rooms').child($roomId).child('moderatorId'))",
+          ".read": "auth != null && (auth.uid == $playerId || auth.uid == root.child('rooms').child($roomId).child('hostId').val() || auth.uid == root.child('rooms').child($roomId).child('moderatorId').val())",
           ".write": "auth != null && (auth.uid == root.child('rooms').child($roomId).child('hostId').val() || auth.uid == root.child('rooms').child($roomId).child('moderatorId').val())",
           ".validate": "newData.hasChildren(['name', 'faction'])"
         }
