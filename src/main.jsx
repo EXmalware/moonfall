@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { anonymousSignIn, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebaseNightAction, setFirebasePrivateRole, setFirebaseVote, subscribeFirebasePrivateRole, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
+import { anonymousSignIn, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebaseNightAction, setFirebasePrivateRole, setFirebaseVote, subscribeFirebaseNightActions, subscribeFirebasePrivateRole, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
 import './style.css';
 
 const avatars = [
@@ -61,6 +61,7 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [players, setPlayers] = useState([]);
   const [roomError, setRoomError] = useState('');
+  const [actionFeedback, setActionFeedback] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [voteState, setVoteState] = useState([]);
   const [roleChatMessages, setRoleChatMessages] = useState([]);
@@ -146,15 +147,33 @@ function App() {
     return subscribeFirebaseWerewolfChat(room.code, (messages) => setRoleChatMessages(Object.values(messages || {})));
   }, [firebaseMode, room.code, assignedRole]);
 
+  useEffect(() => {
+    if (!firebaseMode || !room.code) return undefined;
+    return subscribeFirebaseNightActions(room.code, (actions) => {
+      const ownAction = actions?.[playerId.current];
+      if (ownAction) setNightActionStatus('Aksi malam tersimpan di room.');
+    });
+  }, [firebaseMode, room.code]);
+
   function sendRoomAction(action) {
     if (firebaseMode && room.code) {
-      if (action.type === 'start_room' || action.type === 'set_phase') return updateFirebaseRoom(room.code, { phase: action.type === 'start_room' ? 'malam' : action.phase });
+      if (action.type === 'start_room' || action.type === 'set_phase') {
+        return updateFirebaseRoom(room.code, { phase: action.type === 'start_room' ? 'malam' : action.phase })
+          .then(() => setActionFeedback('Fase room berhasil diperbarui.'))
+          .catch(() => setRoomError('Firebase menolak perubahan fase. Pastikan Anda moderator.'));
+      }
       if (action.type === 'chat_message') return pushFirebaseChat(room.code, { id: `${Date.now()}-${Math.random()}`, alias: players.find((player) => player.id === playerId.current)?.alias || 'Warga', text: action.text });
       if (action.type === 'role_chat') return pushFirebaseWerewolfChat(room.code, { id: `${Date.now()}-${Math.random()}`, alias: players.find((player) => player.id === playerId.current)?.alias || 'Werewolf', text: action.text });
-      if (action.type === 'vote_player') return setFirebaseVote(room.code, action.playerId, action.targetId);
+      if (action.type === 'vote_player') {
+        return setFirebaseVote(room.code, action.playerId, action.targetId)
+          .then(() => setActionFeedback('Vote tersimpan.'))
+          .catch(() => setRoomError('Vote ditolak Firebase. Pastikan fase siang dan pemain masih hidup.'));
+      }
       if (action.type === 'night_action') {
         setNightActionStatus('Aksi malammu sudah dicatat.');
-        return setFirebaseNightAction(room.code, playerId.current, { action: action.action, targetId: action.targetId || null, round: room.round || 1 });
+        return setFirebaseNightAction(room.code, playerId.current, { action: action.action, targetId: action.targetId || null, round: room.round || 1 })
+          .then(() => setActionFeedback('Aksi malam tersimpan.'))
+          .catch(() => setRoomError('Aksi malam ditolak Firebase. Pastikan fase malam dan role masih hidup.'));
       }
       return Promise.resolve();
     }
@@ -236,6 +255,7 @@ function App() {
   }
 
   function sendVote(targetId) {
+    if (room.phase !== 'siang') return setRoomError('Voting hanya tersedia saat siang.');
     sendRoomAction({ type: 'vote_player', playerId: playerId.current, targetId });
   }
 
@@ -244,6 +264,7 @@ function App() {
   }
 
   function sendNightAction(action, targetId) {
+    if (room.phase !== 'malam') return setRoomError('Aksi malam hanya tersedia saat malam.');
     sendRoomAction({ type: 'night_action', playerId: playerId.current, action, targetId });
   }
 
@@ -260,7 +281,7 @@ function App() {
 
   if (screen === 'welcome') return <Welcome profile={profile} updateProfile={updateProfile} enterGame={enterGame} />;
   if (screen === 'room') return <Room room={room} profile={profile} players={players} copied={copied} copyCode={copyCode} back={() => setScreen('home')} start={startRoom} setPhase={setPhase} canStart={room.isHost} roomError={roomError} />;
-  if (screen === 'game') return <SynchronizedGameScreen hunterPrompt={hunterPrompt} sendHunterShot={sendHunterShot} currentAlive={players.find((player) => player.id === playerId.current)?.alive !== false} assignedRole={assignedRole} isModerator={room.isHost} winner={winner} nightResult={nightResult} roleResult={roleResult} roleChatMessages={roleChatMessages} sendRoleChat={sendRoleChat} nightActionStatus={nightActionStatus} moderatorActionStatus={moderatorActionStatus} sendNightAction={sendNightAction} currentPhase={room.phase} round={room.round} phaseEndsAt={room.phaseEndsAt} players={players} voteState={voteState} sendVote={sendVote} chatMessages={chatMessages} sendChat={sendChat} canModerate={room.isHost} setPhase={setPhase} back={() => setScreen('room')} />;
+  if (screen === 'game') return <SynchronizedGameScreen hunterPrompt={hunterPrompt} sendHunterShot={sendHunterShot} currentAlive={players.find((player) => player.id === playerId.current)?.alive !== false} assignedRole={assignedRole} isModerator={room.isHost} winner={winner} nightResult={nightResult} roleResult={roleResult} roleChatMessages={roleChatMessages} sendRoleChat={sendRoleChat} nightActionStatus={nightActionStatus} moderatorActionStatus={moderatorActionStatus} sendNightAction={sendNightAction} currentPhase={room.phase} round={room.round} phaseEndsAt={room.phaseEndsAt} players={players} voteState={voteState} sendVote={sendVote} chatMessages={chatMessages} sendChat={sendChat} canModerate={room.isHost} setPhase={setPhase} feedback={actionFeedback} setPhaseError={roomError} back={() => setScreen('room')} />;
 
   return (
     <main className="app-shell">
