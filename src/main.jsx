@@ -171,6 +171,8 @@ function App() {
     if (!room.isHost) return;
     const remotePlayers = remoteRoom.players || {};
     const roles = firebaseRoles || {};
+    const gamePlayerIds = Object.keys(remotePlayers).filter((id) => id !== remoteRoom.moderatorId);
+    if (previousPhase === 'lobi' || Object.keys(roles).length < gamePlayerIds.length) return;
     if (previousPhase === 'siang' && remoteRoom.phase === 'malam') {
       const totals = {};
       for (const [voterId, targetId] of Object.entries(remoteRoom.votes || {})) {
@@ -212,7 +214,7 @@ function App() {
       await updateFirebaseRoom(room.code, { nightResult: deaths.size ? `${deaths.size} pemain tereliminasi pada malam hari.` : 'Malam berlalu tanpa korban.' });
       await clearFirebaseNightActions(room.code);
     }
-    const alive = Object.keys(remotePlayers).filter((id) => remotePlayers[id].alive !== false && id !== remoteRoom.moderatorId);
+    const alive = gamePlayerIds.filter((id) => remotePlayers[id].alive !== false);
     const evil = alive.filter((id) => ['Werewolf', 'Alpha Werewolf'].includes(roles[id]?.name));
     const good = alive.filter((id) => roles[id]?.faction === 'KELOMPOK BAIK');
     if (evil.length === 0) await updateFirebaseRoom(room.code, { winner: 'WARGA' });
@@ -312,7 +314,7 @@ function App() {
       }
       const assignedRoles = getFirebaseRoles(eligiblePlayers.length);
       Promise.all(eligiblePlayers.map((player, index) => setFirebasePrivateRole(room.code, player.id, assignedRoles[index])))
-        .then(() => updateFirebaseRoom(room.code, { phase: 'malam', round: 1 }))
+        .then(() => updateFirebaseRoom(room.code, { phase: 'malam', round: 1, winner: null, nightResult: '' }))
         .then(() => setScreen('game'))
         .catch(() => setRoomError('Game gagal dimulai. Periksa Firebase Rules untuk role dan phase.'));
       return;
