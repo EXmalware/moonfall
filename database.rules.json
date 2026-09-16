@@ -12,6 +12,10 @@
           ".write": "auth != null && (auth.uid == data.parent().child('hostId').val() || auth.uid == data.parent().child('moderatorId').val())",
           ".validate": "newData.isNumber() && newData.val() >= 1"
         },
+        "moderatorId": {
+          ".write": "auth != null && auth.uid == data.parent().child('hostId').val() && (newData.val() == null || newData.isString())",
+          ".validate": "newData.val() == null || newData.isString()"
+        },
         "nightResult": {
           ".write": "auth != null && (auth.uid == data.parent().child('hostId').val() || auth.uid == data.parent().child('moderatorId').val())",
           ".validate": "newData.isString() && newData.val().length <= 500"

@@ -269,7 +269,7 @@ function App() {
     if (firebaseMode) {
       const code = generateCode();
       const player = { id: playerId.current, name: profile.username || 'Kamu', alias: 'Warga #1', icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: 'Host' };
-      createFirebaseRoom(code, { code, name: 'Desa Cahaya Bulan', moderator, moderatorId: player.id, hostId: player.id, maxPlayers, phase: 'lobi', players: { [player.id]: player } }).then(() => setRoom((current) => ({ ...current, code, maxPlayers, moderator, isHost: true })));
+      createFirebaseRoom(code, { code, name: 'Desa Cahaya Bulan', moderator, moderatorId: moderator === 'host' ? player.id : null, hostId: player.id, maxPlayers, phase: 'lobi', players: { [player.id]: player } }).then(() => setRoom((current) => ({ ...current, code, maxPlayers, moderator, isHost: moderator === 'host' })));
       setModal(null);
       return;
     }
@@ -289,8 +289,10 @@ function App() {
         const usedAliases = new Set(Object.values(remoteRoom.players || {}).map((remotePlayer) => remotePlayer.alias));
         let aliasNumber = 1;
         while (usedAliases.has(`Warga #${aliasNumber}`)) aliasNumber += 1;
-        const player = { id: playerId.current, name: profile.username || 'Kamu', alias: `Warga #${aliasNumber}`, icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: 'Ready' };
+        const becomesModerator = remoteRoom.moderator === 'player' && !remoteRoom.moderatorId;
+        const player = { id: playerId.current, name: profile.username || 'Kamu', alias: `Warga #${aliasNumber}`, icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: becomesModerator ? 'Moderator' : 'Ready' };
         return upsertFirebasePlayer(code, player.id, player).then(() => {
+          if (becomesModerator) return updateFirebaseRoom(code, { moderatorId: player.id }).then(() => setRoom((current) => ({ ...current, code, isHost: true })));
           setRoom((current) => ({ ...current, code, isHost: false }));
           setModal(null);
         });
@@ -330,6 +332,7 @@ function App() {
   }
 
   function sendVote(targetId) {
+    if (room.isHost) return setRoomError('Moderator tidak memiliki hak voting.');
     if (room.phase !== 'siang') return setRoomError('Voting hanya tersedia saat siang.');
     sendRoomAction({ type: 'vote_player', playerId: playerId.current, targetId });
   }
@@ -339,6 +342,7 @@ function App() {
   }
 
   function sendNightAction(action, targetId) {
+    if (room.isHost) return setRoomError('Moderator tidak memiliki aksi role.');
     if (room.phase !== 'malam') return setRoomError('Aksi malam hanya tersedia saat malam.');
     sendRoomAction({ type: 'night_action', playerId: playerId.current, action, targetId });
   }
@@ -356,7 +360,7 @@ function App() {
 
   if (screen === 'welcome') return <Welcome profile={profile} updateProfile={updateProfile} enterGame={enterGame} />;
   if (screen === 'room') return <Room room={room} profile={profile} players={players} copied={copied} copyCode={copyCode} back={() => setScreen('home')} start={startRoom} setPhase={setPhase} canStart={room.isHost} roomError={roomError} />;
-  if (screen === 'game') return <SynchronizedGameScreen hunterPrompt={hunterPrompt} sendHunterShot={sendHunterShot} currentAlive={players.find((player) => player.id === playerId.current)?.alive !== false} assignedRole={assignedRole} isModerator={room.isHost} winner={winner} nightResult={nightResult} roleResult={roleResult} roleChatMessages={roleChatMessages} sendRoleChat={sendRoleChat} nightActionStatus={nightActionStatus} moderatorActionStatus={moderatorActionStatus} sendNightAction={sendNightAction} currentPhase={room.phase} round={room.round} phaseEndsAt={room.phaseEndsAt} players={players} voteState={voteState} sendVote={sendVote} chatMessages={chatMessages} sendChat={sendChat} canModerate={room.isHost} setPhase={setPhase} feedback={actionFeedback} setPhaseError={roomError} back={() => setScreen('room')} />;
+  if (screen === 'game') return <SynchronizedGameScreen hunterPrompt={hunterPrompt} sendHunterShot={sendHunterShot} currentAlive={players.find((player) => player.id === playerId.current)?.alive !== false} assignedRole={assignedRole} isModerator={room.isHost} currentPlayerId={playerId.current} winner={winner} nightResult={nightResult} roleResult={roleResult} roleChatMessages={roleChatMessages} sendRoleChat={sendRoleChat} nightActionStatus={nightActionStatus} moderatorActionStatus={moderatorActionStatus} sendNightAction={sendNightAction} currentPhase={room.phase} round={room.round} phaseEndsAt={room.phaseEndsAt} players={players} voteState={voteState} sendVote={sendVote} chatMessages={chatMessages} sendChat={sendChat} canModerate={room.isHost} setPhase={setPhase} feedback={actionFeedback} setPhaseError={roomError} back={() => setScreen('room')} />;
 
   return (
     <main className="app-shell">
@@ -420,7 +424,8 @@ function Game({ profile, back }) {
     { name: 'Tanner / Jester', symbol: '☹', faction: 'KELOMPOK NETRAL', description: 'Menang jika berhasil difitnah dan dikeluarkan melalui voting warga desa pada siang hari.', action: 'Buat warga desa mencurigaimu.' },
   ];
   const [role] = useState(() => roles[Math.floor(Math.random() * roles.length)]);
-  return <main className="app-shell game-shell"><div className="grain" /><header className="topbar"><button className="back-button" onClick={back}>← <span>Room</span></button><span className="room-status">MALAM 01 / 08:42</span><span className="moon-counter">☾ 01</span></header><section className="game-content">{phase === 'role' ? <><p className="eyebrow">NOTIFIKASI PERAN TERPILIH</p><div className="role-card"><div className="role-notification">✦ Sistem memilih role ini secara acak untukmu</div><span className="role-symbol">{role.symbol}</span><h1>{role.name}</h1><span className="role-faction">{role.faction}</span><div className="role-function"><span>FUNGSI ROLE</span><p>{role.description}</p></div><div className="role-action"><span>AKSI MALAM</span><p>{role.action}</p></div></div><button className="primary-button full" onClick={() => setPhase('night')}>Saya mengerti dan siap <span className="arrow">↗</span></button></> : <><p className="eyebrow">MALAM TIBA / GILIRANMU</p><h1>{role.action}</h1><p className="game-copy">Desa sedang tertidur. Pilihanmu tetap rahasia sampai pagi.</p><div className="target-list">{demoPlayers.slice(0, 3).map((player) => <button className="target-row" key={player.name}><span className={`avatar avatar-${player.tone}`}>{player.icon}</span><span>{player.name}</span><span className="arrow">↗</span></button>)}</div><p className="room-note">Moderator akan mengatur pergantian fase siang dan malam.</p></>}</section></main>;
+    const [isModerator, setIsModerator] = useState(false);
+    return <main className="app-shell game-shell"><div className="grain" /><header className="topbar"><button className="back-button" onClick={back}>← <span>Room</span></button><span className="room-status">MALAM 01 / 08:42</span><span className="moon-counter">☾ 01</span></header><section className="game-content">{phase === 'role' ? <><p className="eyebrow">NOTIFIKASI PERAN TERPILIH</p><div className="role-card"><div className="role-notification">✦ Sistem memilih role ini secara acak untukmu</div><span className="role-symbol">{role.symbol}</span><h1>{role.name}</h1><span className="role-faction">{role.faction}</span><div className="role-function"><span>FUNGSI ROLE</span><p>{role.description}</p></div><div className="role-action"><span>AKSI MALAM</span><p>{role.action}</p></div></div><button className="primary-button full" onClick={() => setPhase('night')}>Saya mengerti dan siap <span className="arrow">↗</span></button></> : <><p className="eyebrow">MALAM TIBA / GILIRANMU</p><h1>{role.action}</h1><p className="game-copy">Desa sedang tertidur. Pilihanmu tetap rahasia sampai pagi.</p><div className="target-list">{demoPlayers.slice(0, 3).map((player) => <button className="target-row" key={player.name}><span className={`avatar avatar-${player.tone}`}>{player.icon}</span><span>{player.name}</span><span className="arrow">↗</span></button>)}</div><p className="room-note">Moderator akan mengatur pergantian fase siang dan malam.</p></>}</section></main>;
 }
 
 function DiscussionChat({ messages, sendChat }) {
@@ -434,7 +439,8 @@ function DiscussionChat({ messages, sendChat }) {
   return <div className="discussion-chat"><div className="chat-heading"><span>Diskusi anonim</span><small>Nama pemain disembunyikan</small></div><div className="chat-messages">{messages.length === 0 ? <p className="chat-empty">Belum ada pesan. Mulai diskusi dengan sopan.</p> : messages.map((message) => <div className="chat-message" key={message.id}><strong>{message.alias}</strong><p>{message.text}</p></div>)}</div><form className="chat-form" onSubmit={submit}><input value={text} onChange={(event) => setText(event.target.value)} maxLength="500" placeholder="Tulis pendapatmu..." aria-label="Pesan diskusi" /><button type="submit" aria-label="Kirim pesan">↗</button></form></div>;
 }
 
-function VotingPanel({ players, voteState, sendVote }) {
+function VotingPanel({ players, voteState, sendVote, isModerator = false, chatMessages = [] }) {
+  if (isModerator) return <ModeratorPanel players={players} messages={chatMessages} phase="siang" />;
   return <div className="voting-panel"><div className="chat-heading"><span>Voting anonim</span><small>Pilih satu tersangka</small></div><div className="vote-list">{players.filter((player) => player.alive !== false && player.status !== 'Host' && player.status !== 'Moderator').map((player) => { const vote = voteState.find((item) => item.targetId === player.id); return <button className="vote-row" key={player.id} onClick={() => sendVote(player.id)}><span>{player.alias}</span><strong>{vote?.count || 0}</strong></button>; })}</div><p className="vote-note">Pilihanmu dapat diubah sebelum moderator menutup voting.</p></div>;
 }
 
@@ -463,9 +469,14 @@ function HunterPanel({ players, message, sendShot }) {
   return <div className="night-action-panel hunter-panel"><div className="chat-heading"><span>Pemburu terakhir</span><small>Kesempatan terakhir</small></div><p>{message}</p><div className="night-targets">{players.filter((player) => player.alive !== false && player.status !== 'Host').map((player) => <button key={player.id} onClick={() => sendShot(player.id)}><span>Tembak {player.alias}</span><span>↗</span></button>)}</div></div>;
 }
 
+function ModeratorPanel({ players, messages, phase }) {
+  return <div className="moderator-panel"><div className="chat-heading"><span>Panel moderator</span><small>{phase === 'siang' ? 'Fase siang' : 'Fase malam'}</small></div><div className="moderator-players">{players.filter((player) => player.status !== 'Host' && player.status !== 'Moderator').map((player) => <div className="moderator-player" key={player.id}><span className={`avatar avatar-${player.tone}`}>{player.icon}</span><span className={player.alive === false ? 'eliminated' : ''}>{player.alias}</span><i>{player.alive === false ? 'Eliminated' : 'Aktif'}</i></div>)}</div><div className="chat-heading"><span>Live chat</span><small>{messages.length} pesan</small></div><div className="chat-messages">{messages.length ? messages.map((message) => <div className="chat-message" key={message.id}><strong>{message.alias}</strong><p>{message.text}</p></div>) : <p className="chat-empty">Belum ada pesan.</p>}</div></div>;
+}
+
 function SynchronizedGameScreen(props) {
   const isWerewolf = props.currentPhase === 'malam' && props.assignedRole?.faction === 'KELOMPOK JAHAT';
   const isPlayerNight = props.currentPhase === 'malam' && props.assignedRole && !props.isModerator;
+  if (props.isModerator) return <><GameScreenWithChat {...props} /><div className="role-chat-overlay"><ModeratorPanel players={props.players} messages={props.chatMessages} phase={props.currentPhase} /></div></>;
   return <><GameScreenWithChat {...props} />{props.hunterPrompt && <div className="role-chat-overlay"><HunterPanel players={props.players} message={props.hunterPrompt} sendShot={props.sendHunterShot} /></div>}{!props.currentAlive && <div className="role-chat-overlay"><div className="dead-banner"><strong>Kamu sudah tereliminasi</strong><span>Mode penonton aktif. Jangan mengirim pesan, voting, atau memberi petunjuk.</span></div></div>}{props.winner && <div className="role-chat-overlay"><div className="winner-banner">Permainan selesai: {props.winner === 'WARGA' ? 'Kelompok Warga menang.' : props.winner === 'TANNER' ? 'Tanner menang.' : 'Kelompok Werewolf menang.'}</div></div>}{props.currentPhase === 'siang' && props.nightResult && <div className="role-chat-overlay"><div className="night-result">Pengumuman malam: {props.nightResult}</div></div>}{props.roleResult && <div className="role-chat-overlay"><div className="role-result">Hasil penerawangan: {props.roleResult}</div></div>}{isWerewolf && props.currentAlive && <div className="role-chat-overlay"><RoleChat messages={props.roleChatMessages} sendMessage={props.sendRoleChat} /></div>}{isPlayerNight && props.currentAlive && <div className="role-chat-overlay"><NightActionPanel players={props.players.filter((player) => player.alive !== false)} role={props.assignedRole} status={props.nightActionStatus} sendAction={props.sendNightAction} /></div>}{props.isModerator && props.currentPhase === 'malam' && props.moderatorActionStatus && <div className="role-chat-overlay"><div className="moderator-progress">Aksi malam: {props.moderatorActionStatus.count}/{props.moderatorActionStatus.total} pemain selesai</div></div>}</>;
 }
 
