@@ -3,7 +3,7 @@
     "rooms": {
       "$roomId": {
         ".read": "auth != null",
-        ".write": "auth != null && ((!data.exists() && newData.child('hostId').val() == auth.uid) || data.child('hostId').val() == auth.uid)",
+        ".write": "auth != null && ((!data.exists() && newData.child('hostId').val() == auth.uid) || data.child('hostId').val() == auth.uid || data.child('moderatorId').val() == auth.uid)",
         "players": {
           "$playerId": {
             ".write": "auth != null && auth.uid == $playerId && (!data.exists() || (newData.child('alive').val() == data.child('alive').val() && newData.child('status').val() == data.child('status').val()))",
@@ -13,7 +13,7 @@
         "votes": {
           "$voterId": {
             ".write": "auth != null && auth.uid == $voterId",
-            ".validate": "newData.isString()"
+            ".validate": "newData.isString() && root.child('rooms').child($roomId).child('players').child(newData.val()).child('alive').val() == true"
           }
         },
         "chatMessages": {
@@ -28,14 +28,18 @@
       "$roomId": {
         "$playerId": {
           ".read": "auth != null && auth.uid == $playerId",
-          ".write": "auth != null && (auth.uid == $playerId || auth.uid == root.child('rooms').child($roomId).child('hostId').val())"
+          ".write": "auth != null && (auth.uid == root.child('rooms').child($roomId).child('hostId').val() || auth.uid == root.child('rooms').child($roomId).child('moderatorId').val())",
+          ".validate": "newData.hasChildren(['name', 'faction'])"
         }
       }
     },
     "werewolfChat": {
       "$roomId": {
         ".read": "auth != null && root.child('privateRoles').child($roomId).child(auth.uid).child('faction').val() == 'KELOMPOK JAHAT'",
-        ".write": "auth != null && root.child('privateRoles').child($roomId).child(auth.uid).child('faction').val() == 'KELOMPOK JAHAT'"
+        ".write": "auth != null && root.child('privateRoles').child($roomId).child(auth.uid).child('faction').val() == 'KELOMPOK JAHAT'",
+        "$messageId": {
+          ".validate": "newData.hasChildren(['id', 'alias', 'text']) && newData.child('alias').val() == root.child('rooms').child($roomId).child('players').child(auth.uid).child('alias').val() && newData.child('text').isString() && newData.child('text').val().length <= 500"
+        }
       }
     }
   }

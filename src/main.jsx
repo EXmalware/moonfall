@@ -207,7 +207,7 @@ function App() {
 
   function startRoom() {
     if (firebaseMode) {
-      const eligiblePlayers = players.filter((player) => player.id !== playerId.current);
+      const eligiblePlayers = players.filter((player) => player.id !== room.moderatorId);
       if (eligiblePlayers.length < 5) {
         setRoomError('Minimal 6 pemain diperlukan untuk memulai permainan.');
         return;
