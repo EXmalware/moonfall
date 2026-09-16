@@ -6,6 +6,7 @@ import { createServer as createViteServer } from 'vite';
 const port = Number(process.env.PORT || 5173);
 const rooms = new Map();
 const persistenceFile = 'rooms.json';
+const phaseDurations = { malam: 120000, siang: 180000 };
 
 function persistRooms() {
   const data = [...rooms.values()].map((room) => ({
@@ -25,6 +26,7 @@ function loadRooms() {
     const data = JSON.parse(readFileSync(persistenceFile, 'utf8'));
     for (const saved of data) {
       const room = { ...saved, players: new Map(), roles: new Map(saved.roles || []), votes: new Map((saved.votes || []).map(([id, voters]) => [id, new Set(voters)])), nightActions: new Map(saved.nightActions || []), witchPotions: new Map(saved.witchPotions || []) };
+      if (room.phase !== 'lobi' && !room.phaseEndsAt) room.phaseEndsAt = Date.now() + (phaseDurations[room.phase] || phaseDurations.malam);
       for (const player of saved.players || []) room.players.set(player.id, { ...player, socket: null });
       rooms.set(room.code, room);
     }
@@ -33,6 +35,12 @@ function loadRooms() {
 
 loadRooms();
 setInterval(persistRooms, 2000);
+setInterval(() => {
+  const now = Date.now();
+  for (const room of rooms.values()) {
+    if (room.phaseEndsAt && room.phase !== 'lobi' && room.phaseEndsAt <= now && !room.winner) transitionPhase(room, room.phase === 'malam' ? 'siang' : 'malam');
+  }
+}, 1000);
 
 const roleTemplates = [
   ['Werewolf', '☾', 'KELOMPOK JAHAT', 'Bangun setiap malam bersama kelompokmu dan pilih satu warga untuk dimangsa.', 'Pilih target serangan bersama kelompokmu.'],
@@ -54,20 +62,50 @@ const roleTemplates = [
 ];
 
 function assignRoles(playerCount) {
-  const villagers = Math.max(0, playerCount - roleTemplates.length);
-  const pool = [...roleTemplates, ...Array.from({ length: villagers }, () => ['Warga Desa', '✦', 'KELOMPOK BAIK', 'Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.', 'Gunakan diskusi dan voting untuk mencari Werewolf.'])];
+  const roleByName = (name) => roleTemplates.find(([roleName]) => roleName === name);
+  const werewolfCount = Math.max(1, Math.floor(playerCount / 4));
+  const selectedNames = [
+    ...Array.from({ length: werewolfCount }, () => 'Werewolf'),
+    ...(playerCount >= 10 ? ['Alpha Werewolf'] : []),
+    'Pelihat / Seer',
+    'Pelindung / Bodyguard',
+    ...(playerCount >= 8 ? ['Pemburu / Hunter', 'Tanner / Jester'] : []),
+    ...(playerCount >= 10 ? ['Dokter / Doctor', 'Penyihir / Witch', 'Cupid'] : []),
+    ...(playerCount >= 12 ? ['Sorceress / Antek Werewolf', 'Mayor / Wali Kota'] : []),
+  ];
+  const pool = selectedNames.slice(0, playerCount).map(roleByName);
+  const villager = ['Warga Desa', '✦', 'KELOMPOK BAIK', 'Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.', 'Gunakan diskusi dan voting untuk mencari Werewolf.'];
+  while (pool.length < playerCount) pool.push(villager);
   return pool.sort(() => Math.random() - 0.5).slice(0, playerCount).map(([name, symbol, faction, description, action]) => ({ name, symbol, faction, description, action }));
 }
 
 function resolveNight(room) {
   const poison = [...room.nightActions.values()].find((action) => action.action === 'Witch:poison');
-  if (poison?.targetId && room.players.has(poison.targetId)) room.players.get(poison.targetId).alive = false;
-  const attack = [...room.nightActions.entries()].find(([, action]) => action.role === 'Werewolf' || action.role === 'Alpha Werewolf');
-  if (!attack?.[1]?.targetId) return 'Malam berlalu tanpa korban.';
+  if (poison?.targetId && room.players.has(poison.targetId)) {
+    const poisoned = room.players.get(poison.targetId);
+    poisoned.alive = false;
+    applyCupid(room, poisoned.id);
+    if (room.roles.get(poisoned.id)?.name.includes('Hunter')) {
+      room.pendingHunter = poisoned.id;
+      send(poisoned.socket, { type: 'hunter_revenge', message: 'Kamu tereliminasi. Pilih satu pemain untuk ditembak.' });
+    }
+  }
+  const attacks = [...room.nightActions.entries()].filter(([, action]) => action.role === 'Werewolf' || action.role === 'Alpha Werewolf');
+  if (!attacks.length) return 'Malam berlalu tanpa korban.';
+  const attackTotals = new Map();
+  for (const [, action] of attacks) {
+    if (!action.targetId || !room.players.has(action.targetId)) continue;
+    attackTotals.set(action.targetId, (attackTotals.get(action.targetId) || 0) + 1);
+  }
+  const highestAttack = Math.max(0, ...attackTotals.values());
+  const attackCandidates = [...attackTotals.entries()].filter(([, count]) => count === highestAttack).map(([targetId]) => targetId);
+  const alphaTarget = attacks.find(([, action]) => action.role === 'Alpha Werewolf')?.[1]?.targetId;
+  const attackTargetId = attackCandidates.includes(alphaTarget) ? alphaTarget : attackCandidates[0];
+  if (!attackTargetId) return 'Malam berlalu tanpa korban.';
   const protectedTargets = new Set([...room.nightActions.values()].filter((action) => action.role.includes('Bodyguard') || action.role.includes('Doctor') || action.action === 'Witch:heal').map((action) => action.targetId));
-  const target = room.players.get(attack[1].targetId);
+  const target = room.players.get(attackTargetId);
   if (!target) return 'Malam berlalu tanpa korban.';
-  if (protectedTargets.has(attack[1].targetId)) return `${target.alias} selamat dari serangan malam.`;
+  if (protectedTargets.has(attackTargetId)) return `${target.alias} selamat dari serangan malam.`;
   target.alive = false;
   applyCupid(room, target.id);
   if (room.roles.get(target.id)?.name.includes('Hunter')) {
@@ -87,12 +125,31 @@ function applyCupid(room, deadId) {
 }
 
 function checkWinner(room) {
+  if (room.tannerWinner) return 'TANNER';
   const alive = [...room.players.values()].filter((player) => player.alive !== false);
   const evil = alive.filter((player) => ['Werewolf', 'Alpha Werewolf'].includes(room.roles.get(player.id)?.name));
   const villagers = alive.filter((player) => room.roles.get(player.id)?.faction === 'KELOMPOK BAIK');
   if (evil.length === 0) return 'WARGA';
   if (evil.length >= villagers.length) return 'WEREWOLF';
   return '';
+}
+
+function transitionPhase(room, nextPhase) {
+  if (room.winner || room.phase === nextPhase || !['siang', 'malam'].includes(nextPhase)) return;
+  if (nextPhase === 'malam' && room.phase === 'siang') room.nightResult = resolveVoting(room);
+  if (nextPhase === 'siang' && room.phase === 'malam') room.nightResult = resolveNight(room);
+  if (nextPhase === 'malam') {
+    const bodyguardAction = [...room.nightActions.entries()].find(([, action]) => action.role.includes('Bodyguard'));
+    room.previousBodyguardTarget = bodyguardAction?.[1]?.targetId || null;
+    room.nightActions.clear();
+    room.nightResult = '';
+    room.round = (room.round || 0) + 1;
+  }
+  room.phase = nextPhase;
+  room.phaseEndsAt = Date.now() + phaseDurations[nextPhase];
+  room.winner = checkWinner(room);
+  if (nextPhase === 'siang') room.votes.clear();
+  broadcast(room);
 }
 
 function resolveVoting(room) {
@@ -108,6 +165,7 @@ function resolveVoting(room) {
   const [targetId] = targets[0];
   const target = room.players.get(targetId);
   target.alive = false;
+  if (room.roles.get(target.id)?.name.includes('Tanner')) room.tannerWinner = true;
   applyCupid(room, target.id);
   if (room.roles.get(target.id)?.name.includes('Hunter')) {
     room.pendingHunter = target.id;
@@ -130,7 +188,7 @@ function send(socket, payload) {
 function broadcast(room) {
   const players = [...room.players.values()].map(({ socket, disconnectTimer, ...player }) => ({ ...player, connected: Boolean(socket) }));
   const voteState = [...room.votes.entries()].map(([targetId, voterIds]) => ({ targetId, targetAlias: room.players.get(targetId)?.alias || 'Pemain keluar', count: voterIds.size }));
-  const payload = JSON.stringify({ type: 'room_state', room: { code: room.code, name: room.name, moderator: room.moderator, maxPlayers: room.maxPlayers, phase: room.phase, players, chatMessages: room.chatMessages, voteState, nightResult: room.nightResult || '', winner: room.winner || '' } });
+  const payload = JSON.stringify({ type: 'room_state', room: { code: room.code, name: room.name, moderator: room.moderator, moderatorId: room.moderatorId, hostId: room.hostId, maxPlayers: room.maxPlayers, phase: room.phase, round: room.round || 0, phaseEndsAt: room.phaseEndsAt || null, players, chatMessages: room.chatMessages, voteState, nightResult: room.nightResult || '', winner: room.winner || '' } });
   for (const player of room.players.values()) {
     if (player.socket?.readyState === 1) player.socket.send(payload);
   }
@@ -147,7 +205,7 @@ websocketServer.on('connection', (socket) => {
 
     if (message.type === 'create_room') {
       const code = createCode();
-      const room = { code, name: message.name || 'Desa Cahaya Bulan', moderator: message.moderator || 'host', moderatorId: message.player.id, hostId: message.player.id, maxPlayers: Math.min(40, Math.max(6, Number(message.maxPlayers) || 15)), phase: 'lobi', chatMessages: [], votes: new Map(), nightActions: new Map(), previousBodyguardTarget: null, witchPotions: new Map(), pendingHunter: null, cupidPair: null, players: new Map() };
+      const room = { code, name: message.name || 'Desa Cahaya Bulan', moderator: message.moderator || 'host', moderatorId: message.moderator === 'player' ? null : message.player.id, hostId: message.player.id, maxPlayers: Math.min(40, Math.max(6, Number(message.maxPlayers) || 15)), phase: 'lobi', round: 0, chatMessages: [], votes: new Map(), nightActions: new Map(), previousBodyguardTarget: null, witchPotions: new Map(), pendingHunter: null, cupidPair: null, players: new Map() };
       room.players.set(message.player.id, { ...message.player, alias: 'Warga #1', alive: true, status: 'Host', socket });
       rooms.set(code, room);
       console.log(`Room ${code} dibuat oleh ${message.player.name}`);
@@ -172,8 +230,13 @@ websocketServer.on('connection', (socket) => {
     if (message.type === 'start_room') {
       const room = rooms.get(socket.roomCode);
       if (!room) return send(socket, { type: 'room_error', message: 'Room tidak ditemukan.' });
-      if (message.playerId !== room.hostId && message.playerId !== room.moderatorId) return send(socket, { type: 'room_error', message: 'Hanya moderator atau pembuat room yang dapat memulai permainan.' });
+      const canModerate = room.moderator === 'host' ? socket.playerId === room.hostId : socket.playerId === room.moderatorId;
+      if (!canModerate) return send(socket, { type: 'room_error', message: 'Hanya moderator yang dapat memulai permainan.' });
+      if (room.players.size < 6) return send(socket, { type: 'room_error', message: 'Minimal 6 pemain diperlukan untuk memulai permainan.' });
+      if (room.phase !== 'lobi') return send(socket, { type: 'room_error', message: 'Permainan sudah dimulai.' });
       room.phase = 'malam';
+      room.round = 1;
+      room.phaseEndsAt = Date.now() + phaseDurations.malam;
       const players = [...room.players.values()].filter((player) => player.id !== room.hostId);
       const assignedRoles = assignRoles(players.length);
       room.roles = new Map(players.map((player, index) => [player.id, assignedRoles[index]]));
@@ -181,44 +244,36 @@ websocketServer.on('connection', (socket) => {
       broadcast(room);
       for (const player of players) send(player.socket, { type: 'role_assigned', role: room.roles.get(player.id) });
       const payload = JSON.stringify({ type: 'game_started' });
-      for (const player of room.players.values()) if (player.socket.readyState === 1) player.socket.send(payload);
+      for (const player of room.players.values()) send(player.socket, { type: 'game_started' });
       return;
     }
 
     if (message.type === 'set_phase') {
       const room = rooms.get(socket.roomCode);
       if (!room) return send(socket, { type: 'room_error', message: 'Room tidak ditemukan.' });
-      if (message.playerId !== room.hostId && message.playerId !== room.moderatorId) return send(socket, { type: 'room_error', message: 'Hanya moderator atau pembuat room yang dapat mengatur fase.' });
+      const canModerate = room.moderator === 'host' ? socket.playerId === room.hostId : socket.playerId === room.moderatorId;
+      if (!canModerate) return send(socket, { type: 'room_error', message: 'Hanya moderator yang dapat mengatur fase.' });
       if (!['siang', 'malam'].includes(message.phase)) return;
-      if (message.phase === 'malam' && room.phase === 'siang') room.nightResult = resolveVoting(room);
-      if (message.phase === 'siang' && room.phase === 'malam') room.nightResult = resolveNight(room);
-      if (message.phase === 'malam') {
-        const bodyguardAction = [...room.nightActions.entries()].find(([, action]) => action.role.includes('Bodyguard'));
-        room.previousBodyguardTarget = bodyguardAction?.[1]?.targetId || null;
-        room.nightActions.clear();
-        room.nightResult = '';
-      }
-      room.phase = message.phase;
-      room.winner = checkWinner(room);
-      if (message.phase === 'siang') room.votes.clear();
-      broadcast(room);
+      if (room.winner) return send(socket, { type: 'room_error', message: 'Permainan sudah selesai.' });
+      if (room.phase === message.phase || (room.phase === 'lobi' && message.phase === 'siang')) return;
+      transitionPhase(room, message.phase);
       return;
     }
 
     if (message.type === 'vote_player') {
       const room = rooms.get(socket.roomCode);
-      if (!room || room.phase !== 'siang') return send(socket, { type: 'room_error', message: 'Voting hanya tersedia saat siang.' });
-      if (!room.players.has(message.playerId) || !room.players.has(message.targetId) || room.players.get(message.playerId).alive === false || room.players.get(message.targetId).alive === false) return;
-      for (const voterIds of room.votes.values()) voterIds.delete(message.playerId);
+      if (!room || room.phase !== 'siang' || room.winner) return send(socket, { type: 'room_error', message: 'Voting hanya tersedia saat siang.' });
+      if (!room.players.has(socket.playerId) || !room.roles.has(message.targetId) || room.players.get(socket.playerId).alive === false || room.players.get(message.targetId).alive === false) return;
+      for (const voterIds of room.votes.values()) voterIds.delete(socket.playerId);
       if (!room.votes.has(message.targetId)) room.votes.set(message.targetId, new Set());
-      room.votes.get(message.targetId).add(message.playerId);
+      room.votes.get(message.targetId).add(socket.playerId);
       broadcast(room);
       return;
     }
 
     if (message.type === 'hunter_shot') {
       const room = rooms.get(socket.roomCode);
-      if (!room || room.pendingHunter !== message.playerId || !room.players.has(message.targetId)) return;
+      if (!room || room.pendingHunter !== socket.playerId || !room.roles.has(message.targetId)) return;
       const target = room.players.get(message.targetId);
       if (target.alive === false) return;
       target.alive = false;
@@ -234,8 +289,8 @@ websocketServer.on('connection', (socket) => {
       const room = rooms.get(socket.roomCode);
       if (!room || room.phase !== 'siang') return send(socket, { type: 'room_error', message: 'Chat diskusi hanya tersedia saat siang.' });
       const text = String(message.text || '').trim().slice(0, 500);
-      if (!text || !room.players.has(message.playerId) || room.players.get(message.playerId).alive === false) return;
-      const player = room.players.get(message.playerId);
+      if (!text || !room.players.has(socket.playerId) || room.players.get(socket.playerId).alive === false) return;
+      const player = room.players.get(socket.playerId);
       room.chatMessages.push({ id: `${Date.now()}-${Math.random()}`, alias: player.alias, text });
       room.chatMessages = room.chatMessages.slice(-100);
       broadcast(room);
@@ -244,11 +299,11 @@ websocketServer.on('connection', (socket) => {
 
     if (message.type === 'role_chat') {
       const room = rooms.get(socket.roomCode);
-      const role = room?.roles?.get(message.playerId);
-      if (!room || room.phase !== 'malam' || !role || role.faction !== 'KELOMPOK JAHAT' || room.players.get(message.playerId)?.alive === false) return send(socket, { type: 'room_error', message: 'Chat Werewolf hanya tersedia untuk faksi Werewolf yang masih hidup saat malam.' });
+      const role = room?.roles?.get(socket.playerId);
+      if (!room || room.phase !== 'malam' || !role || role.faction !== 'KELOMPOK JAHAT' || room.players.get(socket.playerId)?.alive === false) return send(socket, { type: 'room_error', message: 'Chat Werewolf hanya tersedia untuk faksi Werewolf yang masih hidup saat malam.' });
       const text = String(message.text || '').trim().slice(0, 500);
       if (!text) return;
-      const sender = room.players.get(message.playerId);
+      const sender = room.players.get(socket.playerId);
       const payload = { type: 'role_chat', message: { id: `${Date.now()}-${Math.random()}`, alias: sender.alias, text } };
       for (const player of room.players.values()) {
         if (room.roles.get(player.id)?.faction === 'KELOMPOK JAHAT') send(player.socket, payload);
@@ -258,24 +313,30 @@ websocketServer.on('connection', (socket) => {
 
     if (message.type === 'night_action') {
       const room = rooms.get(socket.roomCode);
-      const role = room?.roles?.get(message.playerId);
-      if (!room || room.phase !== 'malam' || !role || room.players.get(message.playerId)?.alive === false) return send(socket, { type: 'room_error', message: 'Aksi malam hanya tersedia untuk pemain hidup saat malam.' });
-      if (message.targetId && !room.players.has(message.targetId)) return;
+      const role = room?.roles?.get(socket.playerId);
+      if (!room || room.phase !== 'malam' || room.winner || !role || room.players.get(socket.playerId)?.alive === false) return send(socket, { type: 'room_error', message: 'Aksi malam hanya tersedia untuk pemain hidup saat malam.' });
+      if (message.targetId && role.name !== 'Cupid' && !room.roles.has(message.targetId)) return send(socket, { type: 'room_error', message: 'Moderator bukan target aksi malam.' });
+      if (message.targetId && role.name !== 'Cupid' && room.players.get(message.targetId)?.alive === false) return send(socket, { type: 'room_error', message: 'Target sudah tereliminasi.' });
+      const targetedRole = ['Werewolf', 'Alpha Werewolf', 'Pelihat / Seer', 'Pelindung / Bodyguard', 'Dokter / Doctor', 'Penyihir / Witch', 'Sorceress / Antek Werewolf'].includes(role.name);
+      if (targetedRole && !message.targetId) return send(socket, { type: 'room_error', message: 'Role ini harus memilih target.' });
+      if (!targetedRole && role.name !== 'Cupid' && message.targetId) return send(socket, { type: 'room_error', message: 'Role ini tidak memiliki target malam.' });
+      if ((role.name === 'Werewolf' || role.name === 'Alpha Werewolf') && room.roles.get(message.targetId)?.faction === 'KELOMPOK JAHAT') return send(socket, { type: 'room_error', message: 'Werewolf tidak dapat menyerang faksi sendiri.' });
       if (role.name === 'Cupid') {
+        if (room.round !== 1 || room.cupidPair) return send(socket, { type: 'room_error', message: 'Cupid hanya dapat bekerja pada malam pertama.' });
         const pair = String(message.targetId || '').split(',').filter((id, index, ids) => id && ids.indexOf(id) === index);
         if (pair.length !== 2 || pair.some((id) => room.players.get(id)?.alive === false)) return send(socket, { type: 'room_error', message: 'Cupid harus memilih dua pemain yang masih hidup.' });
         room.cupidPair = pair;
-        room.nightActions.set(message.playerId, { role: role.name, targetId: pair.join(','), action: 'Cupid:pair' });
+        room.nightActions.set(socket.playerId, { role: role.name, targetId: pair.join(','), action: 'Cupid:pair' });
         send(socket, { type: 'night_action_saved', message: 'Pasangan Kekasih sudah ditentukan.' });
         return;
       }
       if (role.name.includes('Bodyguard') && message.targetId === room.previousBodyguardTarget) return send(socket, { type: 'room_error', message: 'Bodyguard tidak boleh melindungi pemain yang sama dua malam berturut-turut.' });
       if (role.name.includes('Witch')) {
         const potion = message.action === 'Witch:heal' ? 'heal' : message.action === 'Witch:poison' ? 'poison' : null;
-        if (!potion || !room.witchPotions.get(message.playerId)?.[potion]) return send(socket, { type: 'room_error', message: 'Ramuan tersebut sudah digunakan atau tidak tersedia.' });
-        room.witchPotions.get(message.playerId)[potion] = false;
+        if (!potion || !room.witchPotions.get(socket.playerId)?.[potion]) return send(socket, { type: 'room_error', message: 'Ramuan tersebut sudah digunakan atau tidak tersedia.' });
+        room.witchPotions.get(socket.playerId)[potion] = false;
       }
-      room.nightActions.set(message.playerId, { role: role.name, targetId: message.targetId || null, action: String(message.action || 'aksi').slice(0, 40) });
+      room.nightActions.set(socket.playerId, { role: role.name, targetId: message.targetId || null, action: String(message.action || 'aksi').slice(0, 40) });
       send(socket, { type: 'night_action_saved', message: 'Aksi malammu sudah dicatat secara rahasia.' });
       if (role.name.includes('Pelihat') || role.name.includes('Seer')) {
         const targetRole = room.roles.get(message.targetId);
@@ -295,7 +356,10 @@ websocketServer.on('connection', (socket) => {
       const room = rooms.get(code);
       if (!room) return send(socket, { type: 'room_error', message: 'Room tidak ditemukan.' });
       if (room.players.size >= room.maxPlayers) return send(socket, { type: 'room_error', message: 'Room sudah penuh.' });
-      room.players.set(message.player.id, { ...message.player, alias: `Warga #${room.players.size + 1}`, alive: true, status: 'Ready', socket });
+      if (!message.player?.id || room.players.has(message.player.id)) return send(socket, { type: 'room_error', message: 'ID pemain sudah digunakan atau tidak valid.' });
+      const isModerator = room.moderator === 'player' && !room.moderatorId;
+      if (isModerator) room.moderatorId = message.player.id;
+      room.players.set(message.player.id, { ...message.player, alias: `Warga #${room.players.size + 1}`, alive: true, status: isModerator ? 'Moderator' : 'Ready', socket });
       console.log(`${message.player.name} bergabung ke room ${code} (${room.players.size}/${room.maxPlayers})`);
       socket.roomCode = code;
       socket.playerId = message.player.id;

@@ -1,1 +1,769 @@
-[]
+[
+  {
+    "code": "2AMLUG",
+    "name": "Test",
+    "moderator": "host",
+    "moderatorId": "q0",
+    "hostId": "q0",
+    "maxPlayers": 6,
+    "phase": "siang",
+    "chatMessages": [],
+    "votes": [],
+    "nightActions": [],
+    "previousBodyguardTarget": null,
+    "witchPotions": [],
+    "pendingHunter": null,
+    "cupidPair": null,
+    "players": [
+      {
+        "id": "q0",
+        "name": "Host",
+        "icon": "x",
+        "tone": "blue",
+        "alias": "Warga #1",
+        "alive": true,
+        "status": "Host",
+        "socket": null
+      },
+      {
+        "id": "q1",
+        "name": "P1",
+        "icon": "x",
+        "tone": "blue",
+        "alias": "Warga #2",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "q2",
+        "name": "P2",
+        "icon": "x",
+        "tone": "blue",
+        "alias": "Warga #3",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "q3",
+        "name": "P3",
+        "icon": "x",
+        "tone": "blue",
+        "alias": "Warga #4",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "q4",
+        "name": "P4",
+        "icon": "x",
+        "tone": "blue",
+        "alias": "Warga #5",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "q5",
+        "name": "P5",
+        "icon": "x",
+        "tone": "blue",
+        "alias": "Warga #6",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      }
+    ],
+    "roles": [
+      [
+        "q1",
+        {
+          "name": "Pelihat / Seer",
+          "symbol": "◉",
+          "faction": "KELOMPOK BAIK",
+          "description": "Setiap malam, cek apakah satu pemain adalah Werewolf atau bukan.",
+          "action": "Terawang satu pemain malam ini."
+        }
+      ],
+      [
+        "q2",
+        {
+          "name": "Werewolf",
+          "symbol": "☾",
+          "faction": "KELOMPOK JAHAT",
+          "description": "Bangun setiap malam bersama kelompokmu dan pilih satu warga untuk dimangsa.",
+          "action": "Pilih target serangan bersama kelompokmu."
+        }
+      ],
+      [
+        "q3",
+        {
+          "name": "Pelindung / Bodyguard",
+          "symbol": "✚",
+          "faction": "KELOMPOK BAIK",
+          "description": "Melindungi satu pemain dari serangan Werewolf dan tidak boleh memilih orang yang sama dua malam berturut-turut.",
+          "action": "Lindungi satu pemain malam ini."
+        }
+      ],
+      [
+        "q4",
+        {
+          "name": "Mayor / Wali Kota",
+          "symbol": "♛",
+          "faction": "KELOMPOK BAIK",
+          "description": "Suara voting siang hari bernilai dua.",
+          "action": "Gunakan suara ganda dengan bijak."
+        }
+      ],
+      [
+        "q5",
+        {
+          "name": "Tanner / Jester",
+          "symbol": "☹",
+          "faction": "KELOMPOK NETRAL",
+          "description": "Menang jika berhasil dikeluarkan melalui voting warga desa.",
+          "action": "Buat warga desa mencurigaimu."
+        }
+      ]
+    ],
+    "nightResult": "Malam berlalu tanpa korban.",
+    "winner": "",
+    "phaseEndsAt": 1789540659658
+  },
+  {
+    "code": "JIUHPP",
+    "name": "Desa Cahaya Bulan",
+    "moderator": "host",
+    "moderatorId": "h-test",
+    "hostId": "h-test",
+    "maxPlayers": 6,
+    "phase": "lobi",
+    "chatMessages": [],
+    "votes": [],
+    "nightActions": [],
+    "previousBodyguardTarget": null,
+    "witchPotions": [],
+    "pendingHunter": null,
+    "cupidPair": null,
+    "players": [
+      {
+        "id": "h-test",
+        "name": "Host",
+        "alias": "Warga #1",
+        "alive": true,
+        "status": "Host",
+        "socket": null
+      },
+      {
+        "id": "p-test",
+        "name": "Player",
+        "alias": "Warga #2",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      }
+    ],
+    "roles": []
+  },
+  {
+    "code": "WGPT5J",
+    "name": "Desa Cahaya Bulan",
+    "moderator": "host",
+    "moderatorId": "r0",
+    "hostId": "r0",
+    "maxPlayers": 6,
+    "phase": "malam",
+    "chatMessages": [],
+    "votes": [],
+    "nightActions": [],
+    "previousBodyguardTarget": null,
+    "witchPotions": [],
+    "pendingHunter": null,
+    "cupidPair": null,
+    "players": [
+      {
+        "id": "r0",
+        "name": "Host",
+        "alias": "Warga #1",
+        "alive": true,
+        "status": "Host",
+        "socket": null
+      },
+      {
+        "id": "r1",
+        "name": "P1",
+        "alias": "Warga #2",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "r2",
+        "name": "P2",
+        "alias": "Warga #3",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "r3",
+        "name": "P3",
+        "alias": "Warga #4",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "r4",
+        "name": "P4",
+        "alias": "Warga #5",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "r5",
+        "name": "P5",
+        "alias": "Warga #6",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      }
+    ],
+    "roles": [
+      [
+        "r1",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "r2",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "r3",
+        {
+          "name": "Pelihat / Seer",
+          "symbol": "◉",
+          "faction": "KELOMPOK BAIK",
+          "description": "Setiap malam, cek apakah satu pemain adalah Werewolf atau bukan.",
+          "action": "Terawang satu pemain malam ini."
+        }
+      ],
+      [
+        "r4",
+        {
+          "name": "Werewolf",
+          "symbol": "☾",
+          "faction": "KELOMPOK JAHAT",
+          "description": "Bangun setiap malam bersama kelompokmu dan pilih satu warga untuk dimangsa.",
+          "action": "Pilih target serangan bersama kelompokmu."
+        }
+      ],
+      [
+        "r5",
+        {
+          "name": "Pelindung / Bodyguard",
+          "symbol": "✚",
+          "faction": "KELOMPOK BAIK",
+          "description": "Melindungi satu pemain dari serangan Werewolf dan tidak boleh memilih orang yang sama dua malam berturut-turut.",
+          "action": "Lindungi satu pemain malam ini."
+        }
+      ]
+    ],
+    "phaseEndsAt": 1789540599658
+  },
+  {
+    "code": "830KS9",
+    "name": "Desa Cahaya Bulan",
+    "moderator": "player",
+    "moderatorId": "p-1",
+    "hostId": "host-x",
+    "maxPlayers": 6,
+    "phase": "malam",
+    "round": 1,
+    "chatMessages": [],
+    "votes": [],
+    "nightActions": [],
+    "previousBodyguardTarget": null,
+    "witchPotions": [],
+    "pendingHunter": null,
+    "cupidPair": null,
+    "players": [
+      {
+        "id": "host-x",
+        "name": "Host",
+        "alias": "Warga #1",
+        "alive": true,
+        "status": "Host",
+        "socket": null
+      },
+      {
+        "id": "p-1",
+        "name": "P1",
+        "alias": "Warga #2",
+        "alive": true,
+        "status": "Moderator",
+        "socket": null
+      },
+      {
+        "id": "p-2",
+        "name": "P2",
+        "alias": "Warga #3",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "p-3",
+        "name": "P3",
+        "alias": "Warga #4",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "p-4",
+        "name": "P4",
+        "alias": "Warga #5",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "p-5",
+        "name": "P5",
+        "alias": "Warga #6",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      }
+    ],
+    "roles": [
+      [
+        "p-1",
+        {
+          "name": "Werewolf",
+          "symbol": "☾",
+          "faction": "KELOMPOK JAHAT",
+          "description": "Bangun setiap malam bersama kelompokmu dan pilih satu warga untuk dimangsa.",
+          "action": "Pilih target serangan bersama kelompokmu."
+        }
+      ],
+      [
+        "p-2",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "p-3",
+        {
+          "name": "Pelihat / Seer",
+          "symbol": "◉",
+          "faction": "KELOMPOK BAIK",
+          "description": "Setiap malam, cek apakah satu pemain adalah Werewolf atau bukan.",
+          "action": "Terawang satu pemain malam ini."
+        }
+      ],
+      [
+        "p-4",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "p-5",
+        {
+          "name": "Pelindung / Bodyguard",
+          "symbol": "✚",
+          "faction": "KELOMPOK BAIK",
+          "description": "Melindungi satu pemain dari serangan Werewolf dan tidak boleh memilih orang yang sama dua malam berturut-turut.",
+          "action": "Lindungi satu pemain malam ini."
+        }
+      ]
+    ],
+    "phaseEndsAt": 1789540599658
+  },
+  {
+    "code": "D48JNQ",
+    "name": "Desa Cahaya Bulan",
+    "moderator": "player",
+    "moderatorId": "p-1",
+    "hostId": "host-y",
+    "maxPlayers": 6,
+    "phase": "malam",
+    "round": 1,
+    "chatMessages": [],
+    "votes": [],
+    "nightActions": [],
+    "previousBodyguardTarget": null,
+    "witchPotions": [],
+    "pendingHunter": null,
+    "cupidPair": null,
+    "players": [
+      {
+        "id": "host-y",
+        "name": "Host",
+        "alias": "Warga #1",
+        "alive": true,
+        "status": "Host",
+        "socket": null
+      },
+      {
+        "id": "p-1",
+        "name": "P1",
+        "alias": "Warga #2",
+        "alive": true,
+        "status": "Moderator",
+        "socket": null
+      },
+      {
+        "id": "p-2",
+        "name": "P2",
+        "alias": "Warga #3",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "p-3",
+        "name": "P3",
+        "alias": "Warga #4",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "p-4",
+        "name": "P4",
+        "alias": "Warga #5",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "p-5",
+        "name": "P5",
+        "alias": "Warga #6",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      }
+    ],
+    "roles": [
+      [
+        "p-1",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "p-2",
+        {
+          "name": "Pelindung / Bodyguard",
+          "symbol": "✚",
+          "faction": "KELOMPOK BAIK",
+          "description": "Melindungi satu pemain dari serangan Werewolf dan tidak boleh memilih orang yang sama dua malam berturut-turut.",
+          "action": "Lindungi satu pemain malam ini."
+        }
+      ],
+      [
+        "p-3",
+        {
+          "name": "Pelihat / Seer",
+          "symbol": "◉",
+          "faction": "KELOMPOK BAIK",
+          "description": "Setiap malam, cek apakah satu pemain adalah Werewolf atau bukan.",
+          "action": "Terawang satu pemain malam ini."
+        }
+      ],
+      [
+        "p-4",
+        {
+          "name": "Werewolf",
+          "symbol": "☾",
+          "faction": "KELOMPOK JAHAT",
+          "description": "Bangun setiap malam bersama kelompokmu dan pilih satu warga untuk dimangsa.",
+          "action": "Pilih target serangan bersama kelompokmu."
+        }
+      ],
+      [
+        "p-5",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ]
+    ],
+    "phaseEndsAt": 1789540599658
+  },
+  {
+    "code": "147DBV",
+    "name": "Desa Cahaya Bulan",
+    "moderator": "player",
+    "moderatorId": "smoke-player-1",
+    "hostId": "smoke-host",
+    "maxPlayers": 6,
+    "phase": "malam",
+    "round": 1,
+    "chatMessages": [],
+    "votes": [],
+    "nightActions": [],
+    "previousBodyguardTarget": null,
+    "witchPotions": [],
+    "pendingHunter": null,
+    "cupidPair": null,
+    "players": [
+      {
+        "id": "smoke-host",
+        "name": "Host",
+        "alias": "Warga #1",
+        "alive": true,
+        "status": "Host",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-1",
+        "name": "P1",
+        "alias": "Warga #2",
+        "alive": true,
+        "status": "Moderator",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-2",
+        "name": "P2",
+        "alias": "Warga #3",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-3",
+        "name": "P3",
+        "alias": "Warga #4",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-4",
+        "name": "P4",
+        "alias": "Warga #5",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-5",
+        "name": "P5",
+        "alias": "Warga #6",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      }
+    ],
+    "phaseEndsAt": 1789540564392,
+    "roles": [
+      [
+        "smoke-player-1",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "smoke-player-2",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "smoke-player-3",
+        {
+          "name": "Pelihat / Seer",
+          "symbol": "◉",
+          "faction": "KELOMPOK BAIK",
+          "description": "Setiap malam, cek apakah satu pemain adalah Werewolf atau bukan.",
+          "action": "Terawang satu pemain malam ini."
+        }
+      ],
+      [
+        "smoke-player-4",
+        {
+          "name": "Pelindung / Bodyguard",
+          "symbol": "✚",
+          "faction": "KELOMPOK BAIK",
+          "description": "Melindungi satu pemain dari serangan Werewolf dan tidak boleh memilih orang yang sama dua malam berturut-turut.",
+          "action": "Lindungi satu pemain malam ini."
+        }
+      ],
+      [
+        "smoke-player-5",
+        {
+          "name": "Werewolf",
+          "symbol": "☾",
+          "faction": "KELOMPOK JAHAT",
+          "description": "Bangun setiap malam bersama kelompokmu dan pilih satu warga untuk dimangsa.",
+          "action": "Pilih target serangan bersama kelompokmu."
+        }
+      ]
+    ]
+  },
+  {
+    "code": "8BNK1K",
+    "name": "Desa Cahaya Bulan",
+    "moderator": "player",
+    "moderatorId": "smoke-player-1",
+    "hostId": "smoke-host",
+    "maxPlayers": 6,
+    "phase": "malam",
+    "round": 1,
+    "chatMessages": [],
+    "votes": [],
+    "nightActions": [],
+    "previousBodyguardTarget": null,
+    "witchPotions": [],
+    "pendingHunter": null,
+    "cupidPair": null,
+    "players": [
+      {
+        "id": "smoke-host",
+        "name": "Host",
+        "alias": "Warga #1",
+        "alive": true,
+        "status": "Host",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-1",
+        "name": "P1",
+        "alias": "Warga #2",
+        "alive": true,
+        "status": "Moderator",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-2",
+        "name": "P2",
+        "alias": "Warga #3",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-3",
+        "name": "P3",
+        "alias": "Warga #4",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-4",
+        "name": "P4",
+        "alias": "Warga #5",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      },
+      {
+        "id": "smoke-player-5",
+        "name": "P5",
+        "alias": "Warga #6",
+        "alive": true,
+        "status": "Ready",
+        "socket": null
+      }
+    ],
+    "phaseEndsAt": 1789540603115,
+    "roles": [
+      [
+        "smoke-player-1",
+        {
+          "name": "Werewolf",
+          "symbol": "☾",
+          "faction": "KELOMPOK JAHAT",
+          "description": "Bangun setiap malam bersama kelompokmu dan pilih satu warga untuk dimangsa.",
+          "action": "Pilih target serangan bersama kelompokmu."
+        }
+      ],
+      [
+        "smoke-player-2",
+        {
+          "name": "Pelihat / Seer",
+          "symbol": "◉",
+          "faction": "KELOMPOK BAIK",
+          "description": "Setiap malam, cek apakah satu pemain adalah Werewolf atau bukan.",
+          "action": "Terawang satu pemain malam ini."
+        }
+      ],
+      [
+        "smoke-player-3",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ],
+      [
+        "smoke-player-4",
+        {
+          "name": "Pelindung / Bodyguard",
+          "symbol": "✚",
+          "faction": "KELOMPOK BAIK",
+          "description": "Melindungi satu pemain dari serangan Werewolf dan tidak boleh memilih orang yang sama dua malam berturut-turut.",
+          "action": "Lindungi satu pemain malam ini."
+        }
+      ],
+      [
+        "smoke-player-5",
+        {
+          "name": "Warga Desa",
+          "symbol": "✦",
+          "faction": "KELOMPOK BAIK",
+          "description": "Tidak memiliki kekuatan khusus, tetapi memiliki hak suara penuh saat diskusi dan voting siang hari.",
+          "action": "Gunakan diskusi dan voting untuk mencari Werewolf."
+        }
+      ]
+    ]
+  }
+]

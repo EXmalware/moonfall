@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node server.js",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:smoke": "node test/server-smoke.mjs"
   },
   "devDependencies": {
     "vite": "latest"

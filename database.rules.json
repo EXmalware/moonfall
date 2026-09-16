@@ -3,23 +3,39 @@
     "rooms": {
       "$roomId": {
         ".read": "auth != null",
-        ".write": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('hostId').val() === auth.uid) || data.child('hostId').val() === auth.uid)",
         "players": {
           "$playerId": {
-            ".validate": "newData.hasChildren(['id', 'alias', 'alive'])"
+            ".write": "auth != null && auth.uid === $playerId",
+            ".validate": "newData.hasChildren(['id', 'alias', 'alive']) && newData.child('id').val() === $playerId"
           }
         },
-        "privateRoles": {
-          ".read": false,
-          "$playerId": {
-            ".read": "auth != null && auth.uid === $playerId",
-            ".write": "auth != null && (auth.uid === $playerId || auth.uid === data.parent().parent().child('hostId').val())"
+        "votes": {
+          "$voterId": {
+            ".write": "auth != null && auth.uid === $voterId",
+            ".validate": "newData.isString()"
           }
         },
-        "werewolfChat": {
-          ".read": "auth != null",
-          ".write": "auth != null"
+        "chatMessages": {
+          "$messageId": {
+            ".write": "auth != null",
+            ".validate": "newData.hasChildren(['id', 'alias', 'text']) && newData.child('text').isString() && newData.child('text').val().length <= 500"
+          }
         }
+      }
+    },
+    "privateRoles": {
+      "$roomId": {
+        "$playerId": {
+          ".read": "auth != null && auth.uid === $playerId",
+          ".write": "auth != null && (auth.uid === $playerId || auth.uid === root.child('rooms').child($roomId).child('hostId').val())"
+        }
+      }
+    },
+    "werewolfChat": {
+      "$roomId": {
+        ".read": "auth != null && root.child('privateRoles').child($roomId).child(auth.uid).child('faction').val() === 'KELOMPOK JAHAT'",
+        ".write": "auth != null && root.child('privateRoles').child($roomId).child(auth.uid).child('faction').val() === 'KELOMPOK JAHAT'"
       }
     }
   }
