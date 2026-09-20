@@ -140,21 +140,27 @@ function checkWinner(room) {
 }
 
 function transitionPhase(room, nextPhase) {
-  if (room.winner || room.phase === nextPhase || !['siang', 'malam'].includes(nextPhase)) return;
-  if (nextPhase === 'malam' && room.phase === 'siang') room.nightResult = resolveVoting(room);
-  if (nextPhase === 'siang' && room.phase === 'malam') room.nightResult = resolveNight(room);
-  if (nextPhase === 'malam') {
-    const bodyguardAction = [...room.nightActions.entries()].find(([, action]) => action.role.includes('Bodyguard'));
-    room.previousBodyguardTarget = bodyguardAction?.[1]?.targetId || null;
-    room.nightActions.clear();
-    room.nightResult = '';
-    room.round = (room.round || 0) + 1;
+  if (room.phaseTransitionInProgress || room.winner || room.phase === nextPhase || !['siang', 'malam'].includes(nextPhase)) return false;
+  room.phaseTransitionInProgress = true;
+  try {
+    if (nextPhase === 'malam' && room.phase === 'siang') room.nightResult = resolveVoting(room);
+    if (nextPhase === 'siang' && room.phase === 'malam') room.nightResult = resolveNight(room);
+    if (nextPhase === 'malam') {
+      const bodyguardAction = [...room.nightActions.entries()].find(([, action]) => action.role.includes('Bodyguard'));
+      room.previousBodyguardTarget = bodyguardAction?.[1]?.targetId || null;
+      room.nightActions.clear();
+      room.nightResult = '';
+      room.round = (room.round || 0) + 1;
+    }
+    room.phase = nextPhase;
+    room.phaseEndsAt = Date.now() + phaseDurations[nextPhase];
+    room.winner = checkWinner(room);
+    if (nextPhase === 'siang') room.votes.clear();
+    broadcast(room);
+    return true;
+  } finally {
+    room.phaseTransitionInProgress = false;
   }
-  room.phase = nextPhase;
-  room.phaseEndsAt = Date.now() + phaseDurations[nextPhase];
-  room.winner = checkWinner(room);
-  if (nextPhase === 'siang') room.votes.clear();
-  broadcast(room);
 }
 
 function resolveVoting(room) {
@@ -179,6 +185,11 @@ function resolveVoting(room) {
   return `${target.alias} tereliminasi melalui voting siang.`;
 }
 
+function normalizeRoomName(name) {
+  const trimmed = String(name ?? '').trim();
+  return trimmed ? trimmed.slice(0, 40) : 'Desa Cahaya Bulan';
+}
+
 function createCode() {
   let code;
   do code = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -191,6 +202,12 @@ function nextPlayerAlias(room) {
   let number = 1;
   while (aliases.has(`Warga #${number}`)) number += 1;
   return `Warga #${number}`;
+}
+
+function getPlayerRoomState(room, playerId) {
+  const player = room?.players?.get(playerId);
+  if (!player || !room) return null;
+  return { room, player };
 }
 
 function send(socket, payload) {
@@ -222,7 +239,7 @@ websocketServer.on('connection', (socket) => {
     if (message.type === 'create_room') {
       if (!message.player?.id || !message.player?.name) return send(socket, { type: 'room_error', message: 'Data pemain tidak valid.' });
       const code = createCode();
-      const room = { code, name: message.name || 'Desa Cahaya Bulan', moderator: message.moderator || 'host', moderatorId: message.moderator === 'player' ? null : message.player.id, hostId: message.player.id, maxPlayers: Math.min(40, Math.max(6, Number(message.maxPlayers) || 15)), phase: 'lobi', round: 0, chatMessages: [], votes: new Map(), nightActions: new Map(), previousBodyguardTarget: null, witchPotions: new Map(), pendingHunter: null, cupidPair: null, players: new Map() };
+      const room = { code, name: normalizeRoomName(message.name), moderator: message.moderator || 'host', moderatorId: message.moderator === 'player' ? null : message.player.id, hostId: message.player.id, maxPlayers: Math.min(40, Math.max(6, Number(message.maxPlayers) || 15)), phase: 'lobi', round: 0, chatMessages: [], votes: new Map(), nightActions: new Map(), previousBodyguardTarget: null, witchPotions: new Map(), pendingHunter: null, cupidPair: null, phaseTransitionInProgress: false, players: new Map() };
       const player = { ...message.player, alias: 'Warga #1', alive: true, status: 'Host', sessionToken: randomUUID(), socket };
       room.players.set(message.player.id, player);
       rooms.set(code, room);
@@ -275,27 +292,40 @@ websocketServer.on('connection', (socket) => {
       if (!canModerate) return send(socket, { type: 'room_error', message: 'Hanya moderator yang dapat mengatur fase.' });
       if (!['siang', 'malam'].includes(message.phase)) return;
       if (room.winner) return send(socket, { type: 'room_error', message: 'Permainan sudah selesai.' });
-      if (room.phase === message.phase || (room.phase === 'lobi' && message.phase === 'siang')) return;
+      if (room.phase === message.phase) return send(socket, { type: 'room_error', message: 'Fase saat ini sudah aktif.' });
+      if (room.phaseTransitionInProgress) return send(socket, { type: 'room_error', message: 'Transisi fase sedang diproses.' });
+      if (room.phase === 'lobi' && message.phase === 'siang') return;
       transitionPhase(room, message.phase);
       return;
     }
 
     if (message.type === 'vote_player') {
       const room = rooms.get(socket.roomCode);
-      if (!room || room.phase !== 'siang' || room.winner) return send(socket, { type: 'room_error', message: 'Voting hanya tersedia saat siang.' });
-      if (socket.playerId === room.moderatorId || !room.players.has(socket.playerId) || !room.roles.has(message.targetId) || room.players.get(socket.playerId).alive === false || room.players.get(message.targetId).alive === false) return;
+      const state = getPlayerRoomState(room, socket.playerId);
+      if (!room || !state || room.phase !== 'siang' || room.winner) return send(socket, { type: 'room_error', message: 'Voting hanya tersedia saat siang.' });
+      const targetId = String(message.targetId || '').trim();
+      const target = room.players.get(targetId);
+      if (!targetId || !room.players.has(targetId) || !room.roles.has(targetId) || state.player.alive === false || target.alive === false) {
+        return send(socket, { type: 'room_error', message: 'Target vote tidak valid.' });
+      }
+      if (socket.playerId === room.moderatorId || room.moderatorId === targetId) {
+        return send(socket, { type: 'room_error', message: 'Target vote tidak valid.' });
+      }
       for (const voterIds of room.votes.values()) voterIds.delete(socket.playerId);
-      if (!room.votes.has(message.targetId)) room.votes.set(message.targetId, new Set());
-      room.votes.get(message.targetId).add(socket.playerId);
+      if (!room.votes.has(targetId)) room.votes.set(targetId, new Set());
+      room.votes.get(targetId).add(socket.playerId);
       broadcast(room);
       return;
     }
 
     if (message.type === 'hunter_shot') {
       const room = rooms.get(socket.roomCode);
-      if (!room || room.pendingHunter !== socket.playerId || !room.roles.has(message.targetId)) return;
-      const target = room.players.get(message.targetId);
-      if (target.alive === false) return;
+      if (!room || room.pendingHunter !== socket.playerId) return send(socket, { type: 'room_error', message: 'Kamu tidak sedang menunggu tembakan.' });
+      const targetId = String(message.targetId || '').trim();
+      if (!targetId || !room.players.has(targetId) || !room.roles.has(targetId)) return send(socket, { type: 'room_error', message: 'Target tembakan tidak valid.' });
+      const target = room.players.get(targetId);
+      if (!target || target.alive === false) return send(socket, { type: 'room_error', message: 'Target tembakan tidak valid.' });
+      if (target.id === socket.playerId) return send(socket, { type: 'room_error', message: 'Target tembakan tidak valid.' });
       target.alive = false;
       applyCupid(room, target.id);
       room.pendingHunter = null;
@@ -344,7 +374,7 @@ websocketServer.on('connection', (socket) => {
       if (role.name === 'Cupid') {
         if (room.round !== 1 || room.cupidPair) return send(socket, { type: 'room_error', message: 'Cupid hanya dapat bekerja pada malam pertama.' });
         const pair = String(message.targetId || '').split(',').filter((id, index, ids) => id && ids.indexOf(id) === index);
-        if (pair.length !== 2 || pair.some((id) => room.players.get(id)?.alive === false)) return send(socket, { type: 'room_error', message: 'Cupid harus memilih dua pemain yang masih hidup.' });
+        if (pair.length !== 2 || pair.some((id) => !room.roles.has(id) || room.players.get(id)?.alive === false)) return send(socket, { type: 'room_error', message: 'Cupid harus memilih dua pemain yang masih hidup.' });
         room.cupidPair = pair;
         room.nightActions.set(socket.playerId, { role: role.name, targetId: pair.join(','), action: 'Cupid:pair' });
         send(socket, { type: 'night_action_saved', message: 'Pasangan Kekasih sudah ditentukan.' });

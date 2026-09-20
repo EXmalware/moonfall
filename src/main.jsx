@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { anonymousSignIn, clearFirebaseNightActions, clearFirebaseVotes, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebaseNightAction, setFirebasePrivateRole, setFirebaseRoleResult, setFirebaseVote, subscribeFirebaseNightActions, subscribeFirebasePrivateRole, subscribeFirebasePrivateRoles, subscribeFirebaseRoleResult, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebasePlayer, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
+import { anonymousSignIn, claimFirebaseModerator, clearFirebaseNightActions, clearFirebaseVotes, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebaseNightAction, setFirebasePrivateRole, setFirebaseRoleResult, setFirebaseVote, subscribeFirebaseNightActions, subscribeFirebasePrivateRole, subscribeFirebasePrivateRoles, subscribeFirebaseRoleResult, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebasePlayer, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
+import { DEFAULT_ROOM_NAME, sanitizeRoomName } from './room-utils';
 import './style.css';
 
 const avatars = [
@@ -55,7 +56,8 @@ function App() {
   const [screen, setScreen] = useState('welcome');
   const [profile, setProfile] = useState({ username: '', gender: 'Female', avatar: 0 });
   const [assignedRole, setAssignedRole] = useState(null);
-  const [room, setRoom] = useState({ code: '', name: 'Desa Cahaya Bulan', isHost: true, moderator: 'host', maxPlayers: 15, phase: 'lobi' });
+  const [room, setRoom] = useState({ code: '', name: DEFAULT_ROOM_NAME, isHost: true, moderator: 'host', maxPlayers: 15, phase: 'lobi' });
+  const [roomName, setRoomName] = useState(DEFAULT_ROOM_NAME);
   const [modal, setModal] = useState(null);
   const [joinCode, setJoinCode] = useState('');
   const [copied, setCopied] = useState(false);
@@ -79,10 +81,12 @@ function App() {
   const firebaseMode = import.meta.env.VITE_USE_FIREBASE === 'true';
 
   useEffect(() => {
-    anonymousSignIn().then(({ user }) => {
-      if (firebaseMode) playerId.current = user.uid;
-    }).catch(() => setRoomError('Firebase Authentication belum diaktifkan. Aktifkan Anonymous sign-in di Firebase Console.'));
-    if (firebaseMode) return undefined;
+    if (firebaseMode) {
+      anonymousSignIn().then(({ user }) => {
+        playerId.current = user.uid;
+      }).catch(() => setRoomError('Firebase Authentication belum diaktifkan. Aktifkan Anonymous sign-in di Firebase Console.'));
+      return undefined;
+    }
     const defaultSocketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
     const socket = new WebSocket(import.meta.env.VITE_WS_URL || defaultSocketUrl);
     socketRef.current = socket;
@@ -124,7 +128,7 @@ function App() {
     });
     socket.addEventListener('error', () => setRoomError('Koneksi multiplayer gagal. Backend WebSocket belum terhubung.'));
     return () => socket.close();
-  }, []);
+  }, [firebaseMode]);
 
   useEffect(() => {
     if (!firebaseMode || !room.code) return undefined;
@@ -266,14 +270,16 @@ function App() {
   function createRoom(moderator, maxPlayers) {
     setAssignedRole(null);
     sessionStorage.removeItem('moonfall-room-session');
+    const safeRoomName = sanitizeRoomName(roomName);
     if (firebaseMode) {
       const code = generateCode();
       const player = { id: playerId.current, name: profile.username || 'Kamu', alias: 'Warga #1', icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: 'Host' };
-      createFirebaseRoom(code, { code, name: 'Desa Cahaya Bulan', moderator, moderatorId: moderator === 'host' ? player.id : null, hostId: player.id, maxPlayers, phase: 'lobi', players: { [player.id]: player } }).then(() => setRoom((current) => ({ ...current, code, maxPlayers, moderator, isHost: moderator === 'host' })));
+      createFirebaseRoom(code, { code, name: safeRoomName, moderator, moderatorId: moderator === 'host' ? player.id : null, hostId: player.id, maxPlayers, phase: 'lobi', players: { [player.id]: player } }).then(() => setRoom((current) => ({ ...current, code, name: safeRoomName, maxPlayers, moderator, isHost: moderator === 'host' })));
       setModal(null);
       return;
     }
-    sendRoomAction({ type: 'create_room', moderator, maxPlayers, name: 'Desa Cahaya Bulan', player: { id: playerId.current, name: profile.username || 'Kamu', icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone } });
+    sendRoomAction({ type: 'create_room', moderator, maxPlayers, name: safeRoomName, player: { id: playerId.current, name: profile.username || 'Kamu', icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone } });
+    setRoom((current) => ({ ...current, name: safeRoomName }));
     setModal(null);
   }
 
@@ -291,11 +297,11 @@ function App() {
         while (usedAliases.has(`Warga #${aliasNumber}`)) aliasNumber += 1;
         const becomesModerator = remoteRoom.moderator === 'player' && !remoteRoom.moderatorId;
         const player = { id: playerId.current, name: profile.username || 'Kamu', alias: `Warga #${aliasNumber}`, icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: becomesModerator ? 'Moderator' : 'Ready' };
-        return upsertFirebasePlayer(code, player.id, player).then(() => {
-          if (becomesModerator) return updateFirebaseRoom(code, { moderatorId: player.id }).then(() => setRoom((current) => ({ ...current, code, isHost: true })));
-          setRoom((current) => ({ ...current, code, isHost: false }));
+        const claim = becomesModerator ? claimFirebaseModerator(code, player.id) : Promise.resolve({ committed: false });
+        return claim.then(({ committed }) => upsertFirebasePlayer(code, player.id, { ...player, status: committed ? 'Moderator' : 'Ready' }).then(() => {
+          setRoom((current) => ({ ...current, code, isHost: committed }));
           setModal(null);
-        });
+        }));
       });
       return;
     }
@@ -383,7 +389,7 @@ function App() {
         <div className="section-heading"><span>Cara bermain</span><span className="section-line" /></div>
         <div className="steps"><Step number="01" title="Kumpulkan" text="Buat room atau masuk ke room temanmu." /><Step number="02" title="Kelabui" text="Setiap malam, peran rahasia mulai bergerak." /><Step number="03" title="Bertahan" text="Gunakan insting. Hanya satu faksi yang menang." /></div>
       </section>
-      {modal === 'create' && <CreateModal onClose={() => setModal(null)} onCreate={createRoom} />}
+      {modal === 'create' && <CreateModal roomName={roomName} setRoomName={setRoomName} onClose={() => setModal(null)} onCreate={createRoom} />}
       {modal === 'join' && <JoinModal code={joinCode} setCode={setJoinCode} onClose={() => setModal(null)} onJoin={joinRoom} />}
     </main>
   );
@@ -395,10 +401,10 @@ function Welcome({ profile, updateProfile, enterGame }) {
 
 function Step({ number, title, text }) { return <div className="step"><span className="step-number">{number}</span><div><h3>{title}</h3><p>{text}</p></div></div>; }
 
-function CreateModal({ onClose, onCreate }) {
+function CreateModal({ roomName, setRoomName, onClose, onCreate }) {
   const [moderator, setModerator] = useState('host');
   const [maxPlayers, setMaxPlayers] = useState(15);
-  return <Modal title="Buat room" onClose={onClose}><label className="modal-label">Nama room<input defaultValue="Desa Cahaya Bulan" /></label><label className="modal-label capacity-label">Jumlah pemain<input type="number" min="6" max="40" value={maxPlayers} onChange={(event) => setMaxPlayers(Math.min(40, Math.max(6, Number(event.target.value) || 6)))} /><small>Atur dari 6 sampai 40 pemain</small></label><div className="form-label moderator-label">Moderator siang & malam</div><div className="moderator-options"><button className={moderator === 'host' ? 'selected' : ''} onClick={() => setModerator('host')}><strong>Pembuat room</strong><span>Mengatur fase permainan</span></button><button className={moderator === 'player' ? 'selected' : ''} onClick={() => setModerator('player')}><strong>Pemain khusus</strong><span>Dipilih setelah room dibuat</span></button></div><div className="room-settings"><div><span>Pemain</span><strong>6—{maxPlayers}</strong></div><div><span>Mode</span><strong>Klasik</strong></div><div><span>Akses</span><strong>Kode saja</strong></div></div><button className="primary-button full" onClick={() => onCreate(moderator, maxPlayers)}>Buat kode room <span className="arrow">↗</span></button></Modal>;
+  return <Modal title="Buat room" onClose={onClose}><label className="modal-label">Nama room<input value={roomName} onChange={(event) => setRoomName(sanitizeRoomName(event.target.value))} maxLength="40" /></label><label className="modal-label capacity-label">Jumlah pemain<input type="number" min="6" max="40" value={maxPlayers} onChange={(event) => setMaxPlayers(Math.min(40, Math.max(6, Number(event.target.value) || 6)))} /><small>Atur dari 6 sampai 40 pemain</small></label><div className="form-label moderator-label">Moderator siang & malam</div><div className="moderator-options"><button className={moderator === 'host' ? 'selected' : ''} onClick={() => setModerator('host')}><strong>Pembuat room</strong><span>Mengatur fase permainan</span></button><button className={moderator === 'player' ? 'selected' : ''} onClick={() => setModerator('player')}><strong>Pemain khusus</strong><span>Dipilih setelah room dibuat</span></button></div><div className="room-settings"><div><span>Pemain</span><strong>6—{maxPlayers}</strong></div><div><span>Mode</span><strong>Klasik</strong></div><div><span>Akses</span><strong>Kode saja</strong></div></div><button className="primary-button full" onClick={() => onCreate(moderator, maxPlayers)}>Buat kode room <span className="arrow">↗</span></button></Modal>;
 }
 function JoinModal({ code, setCode, onClose, onJoin }) { return <Modal title="Gabung room" onClose={onClose}><p className="modal-hint">Minta kode enam karakter dari moderator.</p><label className="modal-label">Kode room<input autoFocus value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="ABC123" maxLength="6" /></label><button className="primary-button full" onClick={onJoin}>Masuk room <span className="arrow">↗</span></button></Modal>; }
 function Modal({ title, children, onClose }) { return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal-card" onMouseDown={(event) => event.stopPropagation()}><button className="close-button" onClick={onClose} aria-label="Tutup">×</button><span className="modal-kicker">NIGHTFALL</span><h2>{title}</h2>{children}</div></div>; }

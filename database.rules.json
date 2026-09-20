@@ -5,7 +5,7 @@
         ".read": "auth != null",
         ".write": "auth != null && !data.exists() && newData.child('hostId').val() == auth.uid",
         "phase": {
-          ".write": "auth != null && (auth.uid == data.parent().child('hostId').val() || auth.uid == data.parent().child('moderatorId').val())",
+          ".write": "auth != null && (auth.uid == data.parent().child('hostId').val() || auth.uid == data.parent().child('moderatorId').val()) && ((data.val() == 'lobi' && newData.val() == 'malam') || (data.val() == 'malam' && newData.val() == 'siang') || (data.val() == 'siang' && newData.val() == 'malam'))",
           ".validate": "newData.isString() && (newData.val() == 'lobi' || newData.val() == 'malam' || newData.val() == 'siang')"
         },
         "round": {
@@ -13,7 +13,7 @@
           ".validate": "newData.isNumber() && newData.val() >= 1"
         },
         "moderatorId": {
-          ".write": "auth != null && auth.uid == data.parent().child('hostId').val() && (newData.val() == null || newData.isString())",
+          ".write": "auth != null && (auth.uid == data.parent().child('hostId').val() || (data.val() == null && data.parent().child('moderator').val() == 'player' && newData.val() == auth.uid)) && (newData.val() == null || newData.isString())",
           ".validate": "newData.val() == null || newData.isString()"
         },
         "nightResult": {
@@ -26,8 +26,8 @@
         },
         "players": {
           "$playerId": {
-            ".write": "auth != null && (auth.uid == $playerId || auth.uid == root.child('rooms').child($roomId).child('hostId').val() || auth.uid == root.child('rooms').child($roomId).child('moderatorId').val()) && (!data.exists() || newData.child('id').val() == data.child('id').val())",
-            ".validate": "newData.hasChildren(['id', 'alias', 'alive']) && newData.child('id').val() == $playerId"
+            ".write": "auth != null && (auth.uid == root.child('rooms').child($roomId).child('hostId').val() || auth.uid == root.child('rooms').child($roomId).child('moderatorId').val() || (auth.uid == $playerId && (!data.exists() || (newData.child('id').val() == data.child('id').val() && newData.child('alias').val() == data.child('alias').val() && newData.child('alive').val() == data.child('alive').val() && newData.child('status').val() == data.child('status').val()))))",
+            ".validate": "newData.hasChildren(['id', 'alias', 'alive']) && newData.child('id').val() == $playerId && newData.child('alive').isBoolean() && (data.exists() || newData.child('alive').val() == true) && (data.exists() || newData.child('status').val() == 'Ready' || (newData.child('status').val() == 'Host' && auth.uid == root.child('rooms').child($roomId).child('hostId').val()) || (newData.child('status').val() == 'Moderator' && root.child('rooms').child($roomId).child('moderator').val() == 'player' && auth.uid == root.child('rooms').child($roomId).child('moderatorId').val()))"
           }
         },
         "votes": {

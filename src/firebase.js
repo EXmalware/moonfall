@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { get, getDatabase, onValue, push, ref, remove, set, update } from 'firebase/database';
+import { get, getDatabase, onValue, push, ref, remove, runTransaction, set, update } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyB79Gg0X8cFslo5iPtA9xmoF_3XZPFuiyM',
@@ -22,6 +22,7 @@ export const subscribeRoom = (code, callback) => onValue(roomRef(code), (snapsho
 export const getFirebaseRoom = async (code) => (await get(roomRef(code))).val();
 export const createFirebaseRoom = async (code, room) => set(roomRef(code), room);
 export const updateFirebaseRoom = async (code, patch) => update(roomRef(code), patch);
+export const claimFirebaseModerator = async (code, playerId) => runTransaction(ref(database, `rooms/${code}/moderatorId`), (current) => current || playerId);
 export const upsertFirebasePlayer = async (code, playerId, player) => set(ref(database, `rooms/${code}/players/${playerId}`), player);
 export const pushFirebaseChat = async (code, message) => push(ref(database, `rooms/${code}/chatMessages`), message);
 export const setFirebaseVote = async (code, voterId, targetId) => set(ref(database, `rooms/${code}/votes/${voterId}`), targetId);
