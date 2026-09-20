@@ -22,24 +22,26 @@
         },
         "winner": {
           ".write": "auth != null && (auth.uid == data.parent().child('hostId').val() || auth.uid == data.parent().child('moderatorId').val())",
-          ".validate": "newData.isString() && (newData.val() == 'WARGA' || newData.val() == 'WEREWOLF' || newData.val() == 'TANNER')"
+          ".validate": "newData.val() == null || (newData.isString() && (newData.val() == '' || newData.val() == 'WARGA' || newData.val() == 'WEREWOLF' || newData.val() == 'TANNER'))"
         },
         "players": {
           "$playerId": {
             ".write": "auth != null && (auth.uid == root.child('rooms').child($roomId).child('hostId').val() || auth.uid == root.child('rooms').child($roomId).child('moderatorId').val() || (auth.uid == $playerId && (!data.exists() || (newData.child('id').val() == data.child('id').val() && newData.child('alias').val() == data.child('alias').val() && newData.child('alive').val() == data.child('alive').val() && newData.child('status').val() == data.child('status').val()))))",
-            ".validate": "newData.hasChildren(['id', 'alias', 'alive']) && newData.child('id').val() == $playerId && newData.child('alive').isBoolean() && (data.exists() || newData.child('alive').val() == true) && (data.exists() || newData.child('status').val() == 'Ready' || (newData.child('status').val() == 'Host' && auth.uid == root.child('rooms').child($roomId).child('hostId').val()) || (newData.child('status').val() == 'Moderator' && root.child('rooms').child($roomId).child('moderator').val() == 'player' && auth.uid == root.child('rooms').child($roomId).child('moderatorId').val()))"
+            ".validate": "newData.hasChildren(['id', 'alias', 'alive']) && newData.child('id').val() == $playerId && newData.child('alive').isBoolean() && (data.exists() || newData.child('alive').val() == true) && (data.exists() || newData.child('status').val() == 'Ready' || (newData.child('status').val() == 'Host' && auth.uid == newData.parent().parent().child('hostId').val()) || (newData.child('status').val() == 'Moderator' && newData.parent().parent().child('moderator').val() == 'player' && auth.uid == newData.parent().parent().child('moderatorId').val()))"
           }
         },
         "votes": {
+          ".write": "auth != null && (auth.uid == data.parent().child('hostId').val() || auth.uid == data.parent().child('moderatorId').val()) && newData.val() == null",
           "$voterId": {
             ".write": "auth != null && auth.uid == $voterId && root.child('rooms').child($roomId).child('phase').val() == 'siang' && root.child('rooms').child($roomId).child('players').child(auth.uid).child('alive').val() == true && root.child('rooms').child($roomId).child('players').child(auth.uid).child('status').val() != 'Moderator'",
             ".validate": "newData.isString() && root.child('rooms').child($roomId).child('players').child(newData.val()).child('alive').val() == true && root.child('rooms').child($roomId).child('players').child(newData.val()).child('status').val() != 'Moderator'"
           }
         },
         "nightActions": {
+          ".write": "auth != null && (auth.uid == data.parent().child('hostId').val() || auth.uid == data.parent().child('moderatorId').val()) && newData.val() == null",
           "$playerId": {
             ".write": "auth != null && auth.uid == $playerId && root.child('rooms').child($roomId).child('phase').val() == 'malam' && root.child('rooms').child($roomId).child('players').child(auth.uid).child('alive').val() == true",
-            ".validate": "newData.hasChildren(['action', 'round']) && newData.child('action').isString() && newData.child('action').val().length <= 40"
+            ".validate": "newData.hasChildren(['action', 'round']) && newData.child('action').isString() && newData.child('action').val().length <= 40 && newData.child('round').isNumber() && newData.child('round').val() == root.child('rooms').child($roomId).child('round').val() && (!newData.child('targetId').exists() || (newData.child('targetId').isString() && root.child('rooms').child($roomId).child('players').child(newData.child('targetId').val()).child('alive').val() == true))"
           }
         },
         "chatMessages": {

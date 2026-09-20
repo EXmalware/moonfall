@@ -75,6 +75,7 @@ function App() {
   const [winner, setWinner] = useState('');
     const [firebaseRoles, setFirebaseRoles] = useState({});
     const previousFirebasePhase = useRef('lobi');
+    const firebaseTransitionInProgress = useRef(false);
   const socketRef = useRef(null);
   const pendingRoomAction = useRef(null);
   const playerId = useRef(crypto.randomUUID());
@@ -142,8 +143,16 @@ function App() {
       setNightResult(remoteRoom.nightResult || '');
       setWinner(remoteRoom.winner || '');
       const isFirebaseModerator = remoteRoom.moderator === 'host' ? remoteRoom.hostId === playerId.current : remoteRoom.moderatorId === playerId.current;
-      if (remoteRoom.phase !== previousFirebasePhase.current && isFirebaseModerator) resolveFirebaseTransition(remoteRoom, previousFirebasePhase.current);
-      previousFirebasePhase.current = remoteRoom.phase;
+      if (remoteRoom.phase !== previousFirebasePhase.current && isFirebaseModerator && !firebaseTransitionInProgress.current) {
+        firebaseTransitionInProgress.current = true;
+        resolveFirebaseTransition(remoteRoom, previousFirebasePhase.current).then((processed) => {
+          if (processed) previousFirebasePhase.current = remoteRoom.phase;
+        }).finally(() => {
+          firebaseTransitionInProgress.current = false;
+        });
+      } else if (remoteRoom.phase === previousFirebasePhase.current) {
+        previousFirebasePhase.current = remoteRoom.phase;
+      }
       setScreen((current) => current === 'home' || current === 'welcome' ? 'room' : remoteRoom.phase !== 'lobi' ? 'game' : current);
     });
   }, [firebaseMode, room.code, room.isHost]);
@@ -178,7 +187,8 @@ function App() {
     const remotePlayers = remoteRoom.players || {};
     const roles = firebaseRoles || {};
     const gamePlayerIds = Object.keys(remotePlayers).filter((id) => id !== remoteRoom.moderatorId);
-    if (previousPhase === 'lobi' || Object.keys(roles).length < gamePlayerIds.length) return;
+    if (previousPhase === 'lobi') return true;
+    if (Object.keys(roles).length < gamePlayerIds.length) return false;
     if (previousPhase === 'siang' && remoteRoom.phase === 'malam') {
       const totals = {};
       for (const [voterId, targetId] of Object.entries(remoteRoom.votes || {})) {
@@ -225,6 +235,7 @@ function App() {
     const good = alive.filter((id) => roles[id]?.faction === 'KELOMPOK BAIK');
     if (evil.length === 0) await updateFirebaseRoom(room.code, { winner: 'WARGA' });
     else if (evil.length >= good.length) await updateFirebaseRoom(room.code, { winner: 'WEREWOLF' });
+    return true;
   }
 
   useEffect(() => {
