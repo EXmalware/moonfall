@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { anonymousSignIn, claimFirebaseModerator, clearFirebaseNightActions, clearFirebaseVotes, createFirebaseRoom, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebaseNightAction, setFirebasePrivateRole, setFirebaseRoleResult, setFirebaseVote, subscribeFirebaseNightActions, subscribeFirebasePrivateRole, subscribeFirebasePrivateRoles, subscribeFirebaseRoleResult, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebasePlayer, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
+import { anonymousSignIn, claimFirebaseModerator, clearFirebaseNightActions, clearFirebaseVotes, createFirebaseRoom, ensureAnonymousSignIn, getFirebaseRoom, pushFirebaseChat, pushFirebaseWerewolfChat, setFirebaseNightAction, setFirebasePrivateRole, setFirebaseRoleResult, setFirebaseVote, subscribeFirebaseNightActions, subscribeFirebasePrivateRole, subscribeFirebasePrivateRoles, subscribeFirebaseRoleResult, subscribeFirebaseWerewolfChat, subscribeRoom, updateFirebasePlayer, updateFirebaseRoom, upsertFirebasePlayer } from './firebase';
 import { DEFAULT_ROOM_NAME, sanitizeRoomName } from './room-utils';
 import './style.css';
 
@@ -267,14 +267,21 @@ function App() {
     setScreen('home');
   }
 
-  function createRoom(moderator, maxPlayers) {
+  async function createRoom(moderator, maxPlayers) {
     setAssignedRole(null);
     sessionStorage.removeItem('moonfall-room-session');
     const safeRoomName = sanitizeRoomName(roomName);
     if (firebaseMode) {
-      const code = generateCode();
-      const player = { id: playerId.current, name: profile.username || 'Kamu', alias: 'Warga #1', icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: 'Host' };
-      createFirebaseRoom(code, { code, name: safeRoomName, moderator, moderatorId: moderator === 'host' ? player.id : null, hostId: player.id, maxPlayers, phase: 'lobi', players: { [player.id]: player } }).then(() => setRoom((current) => ({ ...current, code, name: safeRoomName, maxPlayers, moderator, isHost: moderator === 'host' })));
+      try {
+        const { user } = await ensureAnonymousSignIn();
+        playerId.current = user.uid;
+        const code = generateCode();
+        const player = { id: user.uid, name: profile.username || 'Kamu', alias: 'Warga #1', icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: 'Host' };
+        await createFirebaseRoom(code, { code, name: safeRoomName, moderator, moderatorId: moderator === 'host' ? player.id : null, hostId: player.id, maxPlayers, phase: 'lobi', players: { [player.id]: player } });
+        setRoom((current) => ({ ...current, code, name: safeRoomName, maxPlayers, moderator, isHost: moderator === 'host' }));
+      } catch (error) {
+        setRoomError(`Room gagal dibuat (${error.code || 'Firebase error'}). Periksa Firebase Rules dan login Anonymous.`);
+      }
       setModal(null);
       return;
     }

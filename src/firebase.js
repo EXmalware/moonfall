@@ -16,6 +16,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const database = getDatabase(app);
 export const anonymousSignIn = () => signInAnonymously(auth);
+export const ensureAnonymousSignIn = () => auth.currentUser ? Promise.resolve({ user: auth.currentUser }) : anonymousSignIn();
 export const roomRef = (code) => ref(database, `rooms/${code}`);
 export const roomPlayersRef = (code) => ref(database, `rooms/${code}/players`);
 export const subscribeRoom = (code, callback) => onValue(roomRef(code), (snapshot) => callback(snapshot.val()));
