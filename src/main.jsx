@@ -141,7 +141,8 @@ function App() {
       setVoteState(Object.entries(remoteRoom.votes || {}).map(([voterId, targetId]) => ({ targetId, count: Object.values(remoteRoom.votes || {}).filter((value) => value === targetId).length, voterId })));
       setNightResult(remoteRoom.nightResult || '');
       setWinner(remoteRoom.winner || '');
-      if (remoteRoom.phase !== previousFirebasePhase.current && room.isHost) resolveFirebaseTransition(remoteRoom, previousFirebasePhase.current);
+      const isFirebaseModerator = remoteRoom.moderator === 'host' ? remoteRoom.hostId === playerId.current : remoteRoom.moderatorId === playerId.current;
+      if (remoteRoom.phase !== previousFirebasePhase.current && isFirebaseModerator) resolveFirebaseTransition(remoteRoom, previousFirebasePhase.current);
       previousFirebasePhase.current = remoteRoom.phase;
       setScreen((current) => current === 'home' || current === 'welcome' ? 'room' : remoteRoom.phase !== 'lobi' ? 'game' : current);
     });
@@ -172,7 +173,8 @@ function App() {
   }, [firebaseMode, room.code]);
 
   async function resolveFirebaseTransition(remoteRoom, previousPhase) {
-    if (!room.isHost) return;
+    const isFirebaseModerator = remoteRoom.moderator === 'host' ? remoteRoom.hostId === playerId.current : remoteRoom.moderatorId === playerId.current;
+    if (!isFirebaseModerator) return;
     const remotePlayers = remoteRoom.players || {};
     const roles = firebaseRoles || {};
     const gamePlayerIds = Object.keys(remotePlayers).filter((id) => id !== remoteRoom.moderatorId);
@@ -245,13 +247,13 @@ function App() {
       if (action.type === 'vote_player') {
         return setFirebaseVote(room.code, action.playerId, action.targetId)
           .then(() => setActionFeedback('Vote tersimpan.'))
-          .catch(() => setRoomError('Vote ditolak Firebase. Pastikan fase siang dan pemain masih hidup.'));
+          .catch((error) => setRoomError(`Vote ditolak (${error.code || 'Firebase error'}). Pastikan fase siang dan pemain masih hidup.`));
       }
       if (action.type === 'night_action') {
         setNightActionStatus('Aksi malammu sudah dicatat.');
         return setFirebaseNightAction(room.code, playerId.current, { action: action.action, targetId: action.targetId || null, round: room.round || 1 })
           .then(() => setActionFeedback('Aksi malam tersimpan.'))
-          .catch(() => setRoomError('Aksi malam ditolak Firebase. Pastikan fase malam dan role masih hidup.'));
+          .catch((error) => setRoomError(`Aksi malam ditolak (${error.code || 'Firebase error'}). Pastikan fase malam, ronde, target, dan role masih valid.`));
       }
       return Promise.resolve();
     }
@@ -290,13 +292,16 @@ function App() {
     setModal(null);
   }
 
-  function joinRoom() {
+  async function joinRoom() {
     if (joinCode.trim().length < 4) return;
     setAssignedRole(null);
     sessionStorage.removeItem('moonfall-room-session');
     if (firebaseMode) {
-      const code = joinCode.trim().toUpperCase();
-      getFirebaseRoom(code).then((remoteRoom) => {
+      try {
+        const { user } = await ensureAnonymousSignIn();
+        playerId.current = user.uid;
+        const code = joinCode.trim().toUpperCase();
+        const remoteRoom = await getFirebaseRoom(code);
         if (!remoteRoom) return setRoomError('Room tidak ditemukan.');
         if (Object.keys(remoteRoom.players || {}).length >= remoteRoom.maxPlayers && !remoteRoom.players[playerId.current]) return setRoomError('Room sudah penuh.');
         const usedAliases = new Set(Object.values(remoteRoom.players || {}).map((remotePlayer) => remotePlayer.alias));
@@ -304,12 +309,13 @@ function App() {
         while (usedAliases.has(`Warga #${aliasNumber}`)) aliasNumber += 1;
         const becomesModerator = remoteRoom.moderator === 'player' && !remoteRoom.moderatorId;
         const player = { id: playerId.current, name: profile.username || 'Kamu', alias: `Warga #${aliasNumber}`, icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone, alive: true, status: becomesModerator ? 'Moderator' : 'Ready' };
-        const claim = becomesModerator ? claimFirebaseModerator(code, player.id) : Promise.resolve({ committed: false });
-        return claim.then(({ committed }) => upsertFirebasePlayer(code, player.id, { ...player, status: committed ? 'Moderator' : 'Ready' }).then(() => {
-          setRoom((current) => ({ ...current, code, isHost: committed }));
-          setModal(null);
-        }));
-      });
+        const { committed } = becomesModerator ? await claimFirebaseModerator(code, player.id) : { committed: false };
+        await upsertFirebasePlayer(code, player.id, { ...player, status: committed ? 'Moderator' : 'Ready' });
+        setRoom((current) => ({ ...current, code, isHost: committed }));
+        setModal(null);
+      } catch (error) {
+        setRoomError(`Room gagal diikuti (${error.code || 'Firebase error'}). Periksa kode room dan Firebase Rules.`);
+      }
       return;
     }
     sendRoomAction({ type: 'join_room', code: joinCode.trim().toUpperCase(), player: { id: playerId.current, name: profile.username || 'Kamu', icon: avatars[profile.avatar].icon, tone: avatars[profile.avatar].tone } });
